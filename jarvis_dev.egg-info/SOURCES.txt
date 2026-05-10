@@ -14,6 +14,7 @@ jarvis_dev.egg-info/top_level.txt
 memory/vector.py
 memory/__pycache__/vector.cpython-312.pyc
 tools/editor.py
+tools/installer.py
 tools/search.py
 tools/shell.py
 tools/__pycache__/editor.cpython-312.pyc
