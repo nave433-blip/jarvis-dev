@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jarvis-dev"
+version = "0.1.0"
+description = "Local AI coding assistant for macOS"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "Your Name"}]
+keywords = ["ai", "coding-assistant", "ollama", "cli"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/jarvis-dev"
+
+[project.scripts]
+jarvis = "cli:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core", "tools", "watcher", "voice", "memory", "rust-core"]
+

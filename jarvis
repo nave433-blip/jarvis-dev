@@ -1,0 +1,2 @@
+#!/bin/bash
+/Users/evanshipley-courter/jarvis-dev/venv/bin/python /Users/evanshipley-courter/cli.py "$@"

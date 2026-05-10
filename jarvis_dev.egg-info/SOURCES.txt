@@ -1,0 +1,8 @@
+MANIFEST.in
+pyproject.toml
+setup.cfg
+jarvis_dev.egg-info/PKG-INFO
+jarvis_dev.egg-info/SOURCES.txt
+jarvis_dev.egg-info/dependency_links.txt
+jarvis_dev.egg-info/entry_points.txt
+jarvis_dev.egg-info/top_level.txt
