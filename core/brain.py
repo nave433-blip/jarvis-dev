@@ -37,6 +37,7 @@ Available Tools:
 - READ: read_file(path, start, end)
 - EDIT: replace(path, old, new)
 - SHELL: run(command)
+- INSTALLER: brew(package), git(repo, dest), or curl(url, output)
 
 Project Rules:
 {project_rules}

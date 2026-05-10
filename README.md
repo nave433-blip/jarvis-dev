@@ -13,6 +13,17 @@ JARVIS is a senior software engineering assistant that runs locally on macOS, po
 
 ## Installation
 
+### Method 1: Curl Install (One-liner)
+```bash
+curl -fsSL https://raw.githubusercontent.com/nave433-blip/jarvis-dev/main/install.sh | bash
+```
+
+### Method 2: Homebrew
+```bash
+brew install nave433-blip/tap/jarvis
+```
+
+### Method 3: Git (Developer Install)
 1. **Requirements:**
    - Python 3.9+
    - [Ollama](https://ollama.com/) (running `llama3`)
@@ -20,7 +31,7 @@ JARVIS is a senior software engineering assistant that runs locally on macOS, po
 
 2. **Setup:**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/nave433-blip/jarvis-dev.git
    cd jarvis-dev
    python3 -m venv venv
    source venv/bin/activate

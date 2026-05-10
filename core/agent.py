@@ -4,6 +4,8 @@ from tools.shell import run
 from tools.search import grep, list_files
 from tools.editor import replace_in_file, read_section
 
+from tools.installer import brew_install, git_install, curl_install
+
 def dispatch_tool(line, next_line):
     if not line.startswith("TOOL:"): return None
     
@@ -21,6 +23,11 @@ def dispatch_tool(line, next_line):
             return replace_in_file(args["path"], args["old"], args["new"])
         elif tool_name == "SHELL":
             return run(args["command"])
+        elif tool_name == "INSTALLER":
+            method = args.get("method")
+            if method == "brew": return brew_install(args["package"])
+            if method == "git": return git_install(args["repo"], args.get("dest", "."))
+            if method == "curl": return curl_install(args["url"], args["output"])
     except Exception as e:
         return f"Tool Error: {e}"
     
