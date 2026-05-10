@@ -11,3 +11,47 @@ Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: MacOS
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
+
+# JARVIS: Local AI Coding Assistant
+
+JARVIS is a senior software engineering assistant that runs locally on macOS, powered by Ollama. It combines voice commands, vector memory, and proactive file monitoring with a Gemini-inspired structured agent workflow.
+
+## Features
+
+- **Gemini-Like Agent:** Structured Research -> Strategy -> Execution loop.
+- **Surgical Editing:** Precise file modifications without rewriting entire files.
+- **Vector Memory:** Remembers past tasks and analyses using Ollama-powered embeddings.
+- **Voice Commands:** Control Jarvis using your voice (Speech-to-Text).
+- **Proactive Monitoring:** Automatically analyzes file changes in the background.
+- **Safe Shell:** Integrated shell tool with built-in safety checks.
+
+## Installation
+
+1. **Requirements:**
+   - Python 3.9+
+   - [Ollama](https://ollama.com/) (running `llama3`)
+   - PortAudio (for voice: `brew install portaudio`)
+
+2. **Setup:**
+   ```bash
+   git clone <your-repo-url>
+   cd jarvis-dev
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -e .
+   ```
+
+## Usage
+
+Run Jarvis from anywhere (if aliased):
+
+```bash
+jarvis chat "Explain the current project structure"
+jarvis fix "Fix the bug in memory/vector.py"
+jarvis voice
+jarvis watch
+```
+
+## Project Rules
+
+Custom instructions can be added to `JARVIS.md` to guide the AI's behavior.
