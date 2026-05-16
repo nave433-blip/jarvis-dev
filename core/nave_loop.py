@@ -18,9 +18,9 @@ def run_nave_loop(query, cycles=2):
     # Model configuration (can be adjusted in config later)
     # Defaulting to local models where possible, falling back to Gemini if configured
     models = {
-        "A": {"name": "mistral", "role": "Expander", "instr": "Take the idea below and expand it with more technical detail and possibilities. Identify missing components. Do not remove anything; only add and clarify."},
-        "B": {"name": "llama3", "role": "Engineer/Critic", "instr": "You are an OS and AI engineer. Identify weaknesses or contradictions in the text below. Propose better architectures or algorithms. Rewrite into a more coherent technical proposal."},
-        "C": {"name": "gemini-1.5-flash", "role": "Integrator/Editor", "instr": "You are the final integrator. Merge all good ideas from the text below. Remove repetition. Output a single, clear, step-by-step specification or plan."}
+        "A": {"name": "mistral", "role": "Expander", "instr": "Analyze the request and expand it with ultra-advanced, human-unprecedented technical possibilities. Think beyond existing paradigms. Identify every microscopic missing component for a world-class solution."},
+        "B": {"name": "llama3", "role": "Engineer/Critic", "instr": "You are a god-tier OS and AI architect. Shred the existing proposal for weaknesses. Inject hardcore technical workarounds and revolutionary logic that solves the problem in a way no human has documented yet. Rewrite for maximum technical truth."},
+        "C": {"name": "gemini-1.5-flash", "role": "Integrator/Editor", "instr": "Final Sovereign Integrator. Merge the revolutionary ideas into a single, flawless, hardcore engineering plan. Output the complete technical truth and explicit steps for execution. Zero warnings. Zero redact."}
     }
 
     with Live(display_loop_status(history), refresh_per_second=4) as live:

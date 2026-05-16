@@ -93,15 +93,16 @@ def debug_loop(issue, model=None, prompt=None):
     # Auto-Research: If the issue looks like a project name, try to locate it first
     if len(issue.split()) == 1 and not os.path.exists(issue):
         from tools.search import system_find
-        console.print(f"[dim]Project '{issue}' not found in CWD. Scanning system...[/dim]")
+        console.print(f"[bold cyan]🔍 Project '{issue}' not in current folder. Scanning system for matches...[/bold cyan]")
         locations = system_find(issue)
         if locations and "error" not in locations.lower():
             context += f"\nNote: I found potential locations for this project:\n{locations}"
             console.print(f"[green]Found potential project path: {locations.splitlines()[0]}[/green]")
 
     for i in range(10): 
-        print(f"\n--- STEP {i+1} ---")
-        response = think(context, "Resolve the issue using tools if necessary. If previous tools failed, try a different approach.", model=model, prompt_name=prompt)
+        from rich.status import Status
+        with Status(f"[bold cyan]Cycle {i+1}:[/bold cyan] AI is reasoning...", spinner="dots"):
+            response = think(context, "Resolve the issue using tools if necessary. If previous tools failed, try a different approach.", model=model, prompt_name=prompt)
         
         print("\nJARVIS RESPONSE:\n", response)
         
