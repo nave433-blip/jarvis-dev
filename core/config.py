@@ -16,6 +16,9 @@ DEFAULT_CONFIG = {
     "gemini_api_key": "",
     "anthropic_api_key": "",
     "xai_api_key": "",
+    "openai_api_key": "",
+    "mistral_api_key": "",
+    "nvidia_api_key": "",
     "github_token": "",
     "personality": "professional"
 }
@@ -53,6 +56,9 @@ def setup_wizard():
     if Confirm.ask("Would you like to configure API keys now?"):
         config["gemini_api_key"] = Prompt.ask("Gemini API Key", default=config["gemini_api_key"], password=True)
         config["anthropic_api_key"] = Prompt.ask("Anthropic API Key", default=config["anthropic_api_key"], password=True)
+        config["openai_api_key"] = Prompt.ask("OpenAI API Key", default=config["openai_api_key"], password=True)
+        config["mistral_api_key"] = Prompt.ask("Mistral API Key", default=config["mistral_api_key"], password=True)
+        config["nvidia_api_key"] = Prompt.ask("NVIDIA NIM API Key", default=config["nvidia_api_key"], password=True)
         config["xai_api_key"] = Prompt.ask("XAI (Grok) API Key", default=config["xai_api_key"], password=True)
         config["github_token"] = Prompt.ask("GitHub Personal Access Token", default=config["github_token"], password=True)
 

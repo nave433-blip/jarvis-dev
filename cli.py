@@ -40,6 +40,7 @@ def get_main_menu_table():
     table.add_row("[9] Dashboard", "Multi-window live dashboard")
     table.add_row("[m] Memory", "Manage and clear vector memory")
     table.add_row("[p] Personality", "Switch between Professional, Sarcastic, etc.")
+    table.add_row("[o] Models", "Select and configure LLM providers (Nvidia, OpenAI, etc.)")
     table.add_row("[f] Focus", "Set the working context for JARVIS")
     table.add_row("[t] Troubleshoot", "Run a command and automatically fix any errors")
     table.add_row("[h] Help", "Robust command documentation")
@@ -53,7 +54,7 @@ def menu():
     display_welcome()
     while True:
         console.print(Align.center(get_main_menu_table()))
-        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "m", "p", "f", "t", "h", "q"], default="1")
+        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "m", "p", "o", "f", "t", "h", "q"], default="1")
         
         if choice == "1":
             q = Prompt.ask("What is your question?")
@@ -80,6 +81,8 @@ def menu():
             memory_menu()
         elif choice == "p":
             personality_menu()
+        elif choice == "o":
+            models_menu()
         elif choice == "f":
             path = Prompt.ask("Enter path to focus on", default=".")
             focus(path)
@@ -346,6 +349,62 @@ def personality(type: str):
         console.print(f"[green]Personality set to {type.capitalize()}[/green]")
     else:
         console.print("[red]Invalid personality type.[/red]")
+
+def models_menu():
+    from core.config import load_config, save_config
+    config = load_config()
+    current_p = config.get("provider", "ollama")
+    current_m = config.get("jarvis_model", "llama3")
+    
+    console.print(Panel(f"Current Provider: [bold cyan]{current_p.upper()}[/bold cyan]\nCurrent Model: [bold yellow]{current_m}[/bold yellow]", title="LLM Model Selection"))
+    
+    console.print("\n[1] Ollama (Local) | [2] OpenAI | [3] Gemini | [4] Claude | [5] Grok | [6] Mistral | [7] NVIDIA NIM | [b] Back")
+    
+    choice = Prompt.ask("Select provider", choices=["1", "2", "3", "4", "5", "6", "7", "b"], default="b")
+    
+    p_mapping = {
+        "1": "ollama", "2": "openai", "3": "gemini", "4": "claude", 
+        "5": "grok", "6": "mistral", "7": "nvidia"
+    }
+    
+    if choice in p_mapping:
+        provider = p_mapping[choice]
+        config["provider"] = provider
+        
+        # Quick model suggestions
+        models = {
+            "ollama": ["llama3", "mistral", "codellama", "phi3"],
+            "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
+            "gemini": ["gemini-1.5-pro", "gemini-1.5-flash"],
+            "claude": ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"],
+            "grok": ["grok-beta"],
+            "mistral": ["mistral-large-latest", "open-mixtral-8x22b"],
+            "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"]
+        }
+        
+        console.print(f"\n[bold]Common Models for {provider.upper()}:[/bold]")
+        for m in models[provider]:
+            console.print(f"- {m}")
+        
+        new_model = Prompt.ask("Enter model name", default=models[provider][0])
+        config["jarvis_model"] = new_model
+        
+        # If it's gemini, also set gemini_model
+        if provider == "gemini":
+            config["gemini_model"] = new_model
+            
+        save_config(config)
+        console.print(f"[green]Switched to {provider.upper()} ({new_model})[/green]")
+
+@app.command()
+def models(provider: str, model: str):
+    """Directly set the LLM provider and model."""
+    from core.config import load_config, save_config
+    config = load_config()
+    config["provider"] = provider.lower()
+    config["jarvis_model"] = model
+    save_config(config)
+    console.print(f"[green]Provider set to {provider.upper()}, Model to {model}[/green]")
 
 @app.command()
 def init():
