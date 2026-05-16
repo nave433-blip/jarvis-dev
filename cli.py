@@ -35,6 +35,7 @@ def get_main_menu_table():
     table.add_row("[4] Watch", "Proactive background file monitoring")
     table.add_row("[5] Config", "View and edit settings")
     table.add_row("[6] Init", "Setup JARVIS.md for the current project")
+    table.add_row("[7] Analyze", "Deep project complexity and health analytics")
     table.add_row("[h] Help", "Robust command documentation")
     table.add_row("[q] Quit", "Exit the JARVIS CLI")
     
@@ -62,6 +63,8 @@ def menu():
             config_menu()
         elif choice == "6":
             init()
+        elif choice == "7":
+            analyze()
         elif choice == "h":
             robust_help()
         elif choice == "q":
@@ -156,6 +159,51 @@ def watch():
 def config():
     """Show configuration."""
     config_menu()
+
+@app.command()
+def analyze(path: str = "."):
+    """Perform deep project complexity and health analytics."""
+    from tools.analytics import project_summary
+    console.print(f"[bold blue]Analyzing project at {path}...[/bold blue]")
+    summary = project_summary(path)
+    
+    table = Table(title="Project Health Analytics", border_style="cyan")
+    table.add_column("Metric", style="white")
+    table.add_column("Value", style="green")
+    
+    table.add_row("Total Files", str(summary["total_files"]))
+    table.add_row("Total Lines (Python)", str(summary["total_lines"]))
+    
+    for lang, count in summary["languages"].items():
+        table.add_row(f"Language ({lang})", str(count))
+    
+    console.print(table)
+    
+    if summary["hotspots"]:
+        console.print("\n[bold red]Complexity Hotspots (Refactor Recommended):[/bold red]")
+        for hs in summary["hotspots"]:
+            console.print(f"- {hs['path']} (Score: {hs['score']})")
+    else:
+        console.print("\n[green]No complexity hotspots detected. Great job![/green]")
+    
+    input("\nPress Enter to return...")
+
+@app.command()
+def github(action: str, repo: str, title: str = "", body: str = "", head: str = "", base: str = "main"):
+    """Perform GitHub actions (info, issue, create_pr, list_prs)."""
+    from tools.github import github_tool
+    if action == "info":
+        res = github_tool.get_repo_info(repo)
+    elif action == "issue":
+        res = github_tool.create_issue(repo, title, body)
+    elif action == "create_pr":
+        res = github_tool.create_pr(repo, title, body, head, base)
+    elif action == "list_prs":
+        res = github_tool.list_pull_requests(repo)
+    else:
+        res = "Unknown GitHub action."
+    
+    console.print(Panel(str(res), title=f"GitHub Result: {action}"))
 
 @app.command()
 def init():

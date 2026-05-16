@@ -15,7 +15,8 @@ DEFAULT_CONFIG = {
     "jarvis_model": "llama3",
     "gemini_api_key": "",
     "anthropic_api_key": "",
-    "xai_api_key": ""
+    "xai_api_key": "",
+    "github_token": ""
 }
 
 def load_config():
@@ -52,6 +53,7 @@ def setup_wizard():
         config["gemini_api_key"] = Prompt.ask("Gemini API Key", default=config["gemini_api_key"], password=True)
         config["anthropic_api_key"] = Prompt.ask("Anthropic API Key", default=config["anthropic_api_key"], password=True)
         config["xai_api_key"] = Prompt.ask("XAI (Grok) API Key", default=config["xai_api_key"], password=True)
+        config["github_token"] = Prompt.ask("GitHub Personal Access Token", default=config["github_token"], password=True)
 
     save_config(config)
     console.print("\n[green]Configuration saved to ~/.jarvis/config.json[/green]")

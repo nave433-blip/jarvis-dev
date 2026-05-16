@@ -3,8 +3,9 @@ from core.brain import think
 from tools.shell import run
 from tools.search import grep, list_files
 from tools.editor import replace_in_file, read_section
-
 from tools.installer import brew_install, git_install, curl_install
+from tools.github import github_tool
+from tools.analytics import analyze_complexity, project_summary
 
 def dispatch_tool(line, next_line):
     if not line.startswith("TOOL:"): return None
@@ -28,6 +29,18 @@ def dispatch_tool(line, next_line):
             if method == "brew": return brew_install(args["package"])
             if method == "git": return git_install(args["repo"], args.get("dest", "."))
             if method == "curl": return curl_install(args["url"], args["output"])
+        elif tool_name == "GITHUB":
+            action = args.get("action")
+            repo = args.get("repo")
+            if action == "info": return github_tool.get_repo_info(repo)
+            if action == "issue": return github_tool.create_issue(repo, args["title"], args["body"])
+            if action == "list_prs": return github_tool.list_pull_requests(repo)
+            if action == "create_pr": return github_tool.create_pr(repo, args["title"], args["body"], args["head"], args.get("base", "main"))
+        elif tool_name == "ANALYTICS":
+            action = args.get("action", "summary")
+            if action == "file": return analyze_complexity(args["path"])
+            return project_summary(args.get("path", "."))
+            
     except Exception as e:
         return f"Tool Error: {e}"
     

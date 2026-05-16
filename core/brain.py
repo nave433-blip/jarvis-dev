@@ -111,10 +111,29 @@ def think(context, task):
 
     prompt = f"""
 You are JARVIS, a senior software engineering assistant.
-System: {project_rules}
-Memories: {memory_context}
-Context: {context}
-Task: {task}
+
+Core workflow: Research -> Strategy -> Execution.
+
+Available Tools:
+- SEARCH: grep(pattern) or glob(pattern)
+- READ: read_file(path, start, end)
+- EDIT: replace(path, old, new)
+- SHELL: run(command)
+- INSTALLER: brew(package), git(repo, dest), or curl(url, output)
+- GITHUB: action(info, issue, list_prs, create_pr), repo, title, body, head, base
+- ANALYTICS: action(file, summary), path
+
+System Rules:
+{project_rules}
+
+Memories:
+{memory_context}
+
+Context:
+{context}
+
+Task:
+{task}
 
 Return your response in a structured format. If you need tools, use:
 TOOL: <NAME>
