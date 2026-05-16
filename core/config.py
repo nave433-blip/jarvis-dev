@@ -49,9 +49,16 @@ def detect_ollama():
     hosts = ["http://localhost:11434", "http://127.0.0.1:11434"]
     for host in hosts:
         try:
-            r = requests.get(f"{host}/api/tags", timeout=1)
+            r = requests.get(f"{host}/api/tags", timeout=0.5)
             if r.status_code == 200: return host
         except: continue
+    
+    # Auto-Launch Attempt for macOS
+    if sys.platform == "darwin":
+        console.print("[dim]Ollama not detected. Attempting to launch Ollama.app...[/dim]")
+        os.system("open -a Ollama")
+        time.sleep(3) # Wait for startup
+        return detect_ollama() # Recursive check
     return None
 
 def verify_and_fix_local_llm():

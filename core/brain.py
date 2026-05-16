@@ -31,10 +31,11 @@ class OllamaProvider(LLMProvider):
 
     def ask(self, prompt, context=""):
         import time
-        max_retries = 3
-        timeout = 120 
+        max_retries = 2
         
         for attempt in range(max_retries):
+            # Attempt 1: 30s (Fast check), Attempt 2: 120s (Deep reasoning)
+            timeout = 30 if attempt == 0 else 120
             try:
                 r = requests.post(self.url, json={
                     "model": self.model,
@@ -45,9 +46,9 @@ class OllamaProvider(LLMProvider):
                 return r.json()["response"]
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
                 if attempt == max_retries - 1:
-                    return f"Ollama Error (Final Attempt): {e}"
-                console.print(f"[yellow]⚠️ Ollama timeout/error (Attempt {attempt+1}/{max_retries}). Retrying in 5s...[/yellow]")
-                time.sleep(5)
+                    return f"Ollama Error: Server unreachable or timed out after deep attempt."
+                console.print(f"[yellow]⚠️ Ollama slow/down. Attempting deep retry (120s)...[/yellow]")
+                time.sleep(2)
             except Exception as e:
                 return f"Ollama Error: {e}"
         return "Ollama Error: Max retries exceeded."
