@@ -44,6 +44,7 @@ def get_main_menu_table():
     table.add_row("/memory", "Search or manage the persistent vector knowledge base")
     table.add_row("/personality", "Switch between Professional, Sarcastic, Concise, or Mentor vibes")
     table.add_row("/models", "Intelligent provider switcher (Ollama, NVIDIA, OpenAI, etc.)")
+    table.add_row("/launch", "Spin up specialized AI agents (Claude Code, Hermes, Copilot CLI)")
     table.add_row("/model", "Detailed status of active model, provider, and current quota")
     table.add_row("/cloud", "Bridge to Google Drive, Dropbox, and iCloud storage")
     table.add_row("/focus", "Set a specific path as the primary work context for the agent")

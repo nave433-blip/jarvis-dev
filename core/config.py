@@ -23,6 +23,8 @@ DEFAULT_CONFIG = {
     "openai_api_key": "",
     "mistral_api_key": "",
     "nvidia_api_key": "",
+    "deepseek_api_key": "",
+    "moonshot_api_key": "",
     "dropbox_token": "",
     "gdrive_token": "",
     "github_token": "",
@@ -33,18 +35,14 @@ DEFAULT_CONFIG = {
 }
 
 def load_config():
-    if not CONFIG_FILE.exists():
-        return DEFAULT_CONFIG
+    if not CONFIG_FILE.exists(): return DEFAULT_CONFIG
     try:
-        with open(CONFIG_FILE, "r") as f:
-            return {**DEFAULT_CONFIG, **json.load(f)}
-    except Exception:
-        return DEFAULT_CONFIG
+        with open(CONFIG_FILE, "r") as f: return {**DEFAULT_CONFIG, **json.load(f)}
+    except Exception: return DEFAULT_CONFIG
 
 def save_config(config):
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=4)
+    with open(CONFIG_FILE, "w") as f: json.dump(config, f, indent=4)
 
 def detect_ollama():
     hosts = ["http://localhost:11434", "http://127.0.0.1:11434"]
@@ -59,7 +57,6 @@ def verify_and_fix_local_llm():
     """Proactively check local LLM settings and auto-repair if possible."""
     config = load_config()
     if config["provider"] == "ollama":
-        # Check if current host is alive
         try:
             r = requests.get(f"{config['ollama_host']}/api/tags", timeout=1)
             if r.status_code != 200: raise Exception("Host not responding")
@@ -74,47 +71,34 @@ def verify_and_fix_local_llm():
                 console.print("[red]❌ Self-heal failed: No local Ollama instance detected. Please start your server.[/red]")
 
 def smart_input(label, default_val, auto_detect_func=None):
-    """Smarter input that offers auto-detection if the user is unsure."""
     if Confirm.ask(f"Do you have the specific {label} details (e.g. URL or Key)?"):
         return Prompt.ask(f"Enter {label}", default=default_val)
-    
     if auto_detect_func:
         console.print(f"[dim]Attempting to auto-configure {label}...[/dim]")
         detected = auto_detect_func()
         if detected:
             console.print(f"[green]✅ Auto-detected: {detected}[/green]")
             return detected
-            
-    console.print(f"[yellow]⚠️ No specific {label} details provided. Using default: {default_val}[/yellow]")
+    console.print(f"[yellow]⚠️ No specific {label} details provided. Using default/empty.[/yellow]")
     return default_val
 
 def setup_wizard():
     console.print("[bold cyan]Welcome to JARVIS Setup Wizard[/bold cyan]\n")
     config = load_config()
-    
-    config["provider"] = Prompt.ask(
-        "Select your primary LLM provider",
-        choices=["ollama", "gemini", "claude", "openai", "grok", "mistral", "nvidia"],
-        default=config["provider"]
-    )
-
+    config["provider"] = Prompt.ask("Select your primary LLM provider", choices=["ollama", "gemini", "claude", "openai", "grok", "mistral", "nvidia", "deepseek", "kimi"], default=config["provider"])
     if config["provider"] == "ollama":
         config["ollama_host"] = smart_input("Ollama Host URL", config["ollama_host"], auto_detect_func=detect_ollama)
         config["jarvis_model"] = Prompt.ask("Ollama Model Name", default=config["jarvis_model"])
-    
     if Confirm.ask("Would you like to configure Cloud API Keys now?"):
-        for key in ["gemini_api_key", "openai_api_key", "anthropic_api_key", "xai_api_key", "mistral_api_key", "nvidia_api_key"]:
+        for key in ["gemini_api_key", "openai_api_key", "anthropic_api_key", "xai_api_key", "mistral_api_key", "nvidia_api_key", "deepseek_api_key", "moonshot_api_key"]:
             name = key.replace("_", " ").title()
             if Confirm.ask(f"Configure {name}?"):
                 config[key] = Prompt.ask(f"Enter {name}", default=config.get(key, ""), password=True)
-
     if Confirm.ask("Configure external integrations (GitHub, Cloud Storage)?"):
         config["github_token"] = Prompt.ask("GitHub Personal Access Token", default=config.get("github_token", ""), password=True)
         config["dropbox_token"] = Prompt.ask("Dropbox API Token", default=config.get("dropbox_token", ""), password=True)
         config["gdrive_token"] = Prompt.ask("Google Drive API Token", default=config.get("gdrive_token", ""), password=True)
-
     config["self_repair"] = Confirm.ask("Enable autonomous self-repair?", default=config.get("self_repair", True))
-
     save_config(config)
     console.print("\n[green]Configuration saved successfully.[/green]")
 
