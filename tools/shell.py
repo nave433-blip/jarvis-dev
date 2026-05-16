@@ -1,6 +1,13 @@
 import subprocess
 
-def run(cmd):
+UNSAFE_PATTERNS = ["rm ", "sudo ", "mv ", "chmod ", "chown ", "dd ", "mkfs ", "> /dev/", ":(){ :|:& };:"]
+
+def run(cmd, confirm=False):
+    is_unsafe = any(pattern in cmd for pattern in UNSAFE_PATTERNS)
+    
+    if is_unsafe and not confirm:
+        return {"status": "needs_confirmation", "command": cmd}
+
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=180)
         output = result.stdout
@@ -15,9 +22,9 @@ def run(cmd):
     except Exception as e:
         return {"error": str(e)}
 
-def run_simple(cmd):
+def run_simple(cmd, confirm=False):
     """Legacy wrapper for simple output."""
-    res = run(cmd)
+    res = run(cmd, confirm=confirm)
     if isinstance(res, dict):
         if res.get("return_code") == 0:
             return res.get("stdout") or "Success (No output)"

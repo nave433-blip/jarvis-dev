@@ -33,6 +33,14 @@ def dispatch_tool(line, next_line):
         elif tool_name == "EDIT":
             return replace_in_file(args["path"], args["old"], args["new"])
         elif tool_name == "SHELL":
+            from tools.shell import run
+            res = run(args["command"])
+            if isinstance(res, dict) and res.get("status") == "needs_confirmation":
+                console.print(Panel(f"[bold red]⚠️ POTENTIALLY UNSAFE COMMAND DETECTED[/bold red]\n\n[white]{res['command']}[/white]", border_style="red"))
+                if Confirm.ask("Do you want to authorize this command?"):
+                    return run_simple(res['command'], confirm=True)
+                else:
+                    return "ABORTED: Command authorization denied by user."
             return run_simple(args["command"])
         elif tool_name == "INSTALLER":
             method = args.get("method")
@@ -106,7 +114,7 @@ def troubleshoot_loop(command, model=None, prompt=None):
     console.print(f"[bold cyan]Troubleshooting command:[/bold cyan] {command}")
     
     # Execute the failing command
-    result = run(command)
+    result = run(command, confirm=True) 
     
     if result.get("return_code") == 0:
         console.print("[green]Command succeeded on first try. No troubleshooting needed.[/green]")

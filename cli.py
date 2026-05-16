@@ -65,6 +65,10 @@ def menu():
 
     while True:
         try:
+            # Display Workspace Info Box before each prompt
+            cwd = os.getcwd()
+            console.print(Panel(f"📁 [bold white]Workspace:[/bold white] [cyan]{cwd}[/cyan]", border_style="dim", expand=False))
+            
             text = session.prompt('JARVIS > ', style=style).strip()
             last_ctrl_c = 0 
             
