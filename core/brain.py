@@ -20,7 +20,7 @@ def is_connected():
 class LLMProvider:
     def __init__(self, model=None):
         self.model = model
-    def ask(self, prompt, context=""):
+    def ask(self, prompt, context="", options=None):
         raise NotImplementedError
 
 class OllamaProvider(LLMProvider):
@@ -29,19 +29,22 @@ class OllamaProvider(LLMProvider):
         self.host = get_env_with_config("ollama_host") or "http://localhost:11434"
         self.url = f"{self.host}/api/generate"
 
-    def ask(self, prompt, context=""):
+    def ask(self, prompt, context="", options=None):
         import time
         max_retries = 2
         
         for attempt in range(max_retries):
-            # Attempt 1: 30s (Fast check), Attempt 2: 120s (Deep reasoning)
             timeout = 30 if attempt == 0 else 120
+            payload = {
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False
+            }
+            if options:
+                payload["options"] = options
+
             try:
-                r = requests.post(self.url, json={
-                    "model": self.model,
-                    "prompt": prompt,
-                    "stream": False
-                }, timeout=timeout)
+                r = requests.post(self.url, json=payload, timeout=timeout)
                 r.raise_for_status()
                 return r.json()["response"]
             except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
@@ -59,7 +62,7 @@ class OpenAICompatibleProvider(LLMProvider):
         self.api_key = api_key
         self.url = url
 
-    def ask(self, prompt, context=""):
+    def ask(self, prompt, context="", options=None):
         if not self.api_key:
             console.print(f"[dim]⚠️ API Key missing for {self.url}. Attempting autonomous recovery...[/dim]")
             from tools.search import system_find
@@ -71,6 +74,8 @@ class OpenAICompatibleProvider(LLMProvider):
         try:
             headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
             data = {"model": self.model, "messages": [{"role": "user", "content": prompt}]}
+            if options:
+                data.update(options)
             r = requests.post(self.url, headers=headers, json=data, timeout=60)
             r.raise_for_status()
             return r.json()["choices"][0]["message"]["content"]
@@ -82,12 +87,18 @@ class GeminiProvider(LLMProvider):
         super().__init__(model or get_env_with_config("gemini_model") or "gemini-1.5-pro")
         self.api_key = get_env_with_config("gemini_api_key")
 
-    def ask(self, prompt, context=""):
+    def ask(self, prompt, context="", options=None):
         if not self.api_key: return "Gemini API Key missing."
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
         try:
             headers = {'Content-Type': 'application/json'}
             data = {"contents": [{"parts": [{"text": prompt}]}]}
+            if options:
+                # Basic mapping for Gemini options
+                conf = {}
+                if "temperature" in options: conf["temperature"] = options["temperature"]
+                if "top_p" in options: conf["top_p"] = options["top_p"]
+                if conf: data["generationConfig"] = conf
             r = requests.post(url, headers=headers, json=data, timeout=60)
             r.raise_for_status()
             return r.json()['candidates'][0]['content']['parts'][0]['text']
@@ -99,11 +110,14 @@ class ClaudeProvider(LLMProvider):
         super().__init__(model or get_env_with_config("claude_model") or "claude-3-5-sonnet-20240620")
         self.api_key = get_env_with_config("anthropic_api_key")
 
-    def ask(self, prompt, context=""):
+    def ask(self, prompt, context="", options=None):
         if not self.api_key: return "Claude API Key missing."
         try:
             headers = {"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
             data = {"model": self.model, "max_tokens": 4096, "messages": [{"role": "user", "content": prompt}]}
+            if options:
+                if "temperature" in options: data["temperature"] = options["temperature"]
+                if "top_p" in options: data["top_p"] = options["top_p"]
             r = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=data, timeout=60)
             r.raise_for_status()
             return r.json()["content"][0]["text"]
@@ -115,11 +129,12 @@ class KimiProvider(LLMProvider):
         super().__init__(model or "moonshot-v1-8k")
         self.api_key = get_env_with_config("moonshot_api_key")
 
-    def ask(self, prompt, context=""):
+    def ask(self, prompt, context="", options=None):
         if not self.api_key: return "Kimi API Key missing."
         try:
             headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
             data = {"model": self.model, "messages": [{"role": "user", "content": prompt}]}
+            if options: data.update(options)
             r = requests.post("https://api.moonshot.cn/v1/chat/completions", headers=headers, json=data, timeout=60)
             r.raise_for_status()
             return r.json()["choices"][0]["message"]["content"]
