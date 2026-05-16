@@ -11,23 +11,31 @@ JARVIS is a senior software engineering assistant that runs locally on macOS, po
 - **Proactive Monitoring:** Automatically analyzes file changes in the background.
 - **Safe Shell:** Integrated shell tool with built-in safety checks.
 
-## Installation
+## 📦 Installation Alternatives
 
-### 🚀 Quick Install (Global)
-Install JARVIS globally and launch it from anywhere by simply typing `jarvis`:
+JARVIS is designed to be accessible from any environment. Choose the method that best fits your workflow:
 
+### 1. Homebrew (macOS GUI)
+Install the standalone Jarvis Term application via Cask:
+```bash
+brew install --cask https://raw.githubusercontent.com/nave433-blip/jarvis-term/master/jarvis-term.rb
+```
+
+### 2. Global Pip Install (Assistant CLI)
+Install the JARVIS CLI globally on any machine with Python 3.9+:
+```bash
+pip install git+https://github.com/nave433-blip/jarvis-dev.git
+```
+*Note: This will add the `jarvis` command to your system PATH.*
+
+### 3. One-Liner (Self-Repairing Setup)
+Best for fresh macOS systems:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nave433-blip/jarvis-dev/main/install.sh | bash
 ```
 
-### 📦 Manual Install
-1. **Requirements:** Python 3.9+, [Ollama](https://ollama.com/), PortAudio (`brew install portaudio`).
-2. **Setup:**
-   ```bash
-   git clone https://github.com/nave433-blip/jarvis-dev.git
-   cd jarvis-dev
-   make install
-   ```
+### 4. Linux AppImage
+Download the `.AppImage` from the [Releases](https://github.com/nave433-blip/jarvis-term/releases) tab, make it executable, and run.
 
 ## Usage
 
