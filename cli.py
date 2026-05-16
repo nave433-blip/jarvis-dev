@@ -47,15 +47,18 @@ COMMANDS = [
     "/chat", "/fix", "/forge", "/decode", "/lookup", "/hardware", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
     "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
-    "/git", "/nave", "/sync", "/upgrade", "/connect", "/exit"
+    "/git", "/nave", "/sync", "/upgrade", "/update", "/exit"
 ]
 
 def get_bottom_toolbar():
-    cwd = os.getcwd()
-    config = load_config()
-    model = config.get("jarvis_model", "unknown")
-    provider = config.get("provider", "ollama")
-    return f" [cyan]📁 {cwd}[/cyan] | [magenta]🧠 {provider.upper()} ({model})[/magenta]"
+    try:
+        cwd = os.getcwd()
+        config = load_config()
+        model = config.get("jarvis_model", "unknown")
+        provider = config.get("provider", "ollama")
+        return f" [cyan]📁 {cwd}[/cyan] | [magenta]🧠 {provider.upper()} ({model})[/magenta]"
+    except:
+        return " [red]System Initializing...[/red]"
 
 @app.command()
 def menu():
@@ -84,46 +87,68 @@ def menu():
             text = session.prompt('JARVIS > ', style=style).strip()
             last_ctrl_c = 0 
             if not text: continue
-            if text == "/exit":
+            if text in ["/exit", "exit", "quit"]:
                 console.print("[yellow]Goodbye, Sir.[/yellow]"); break
             
-            # Smart Parser: Detect command verbs without slashes
-            cmd_parts = text.split(" ", 1)
-            first_word = cmd_parts[0].lower()
-            potential_args = cmd_parts[1] if len(cmd_parts) > 1 else ""
+            # --- Smart Intent Router ---
+            text_low = text.lower()
+            tokens = text.split()
+            first_word = tokens[0].lower() if tokens else ""
             
+            # 1. Alias & Verb Mapping
+            verb_map = {
+                "fix": "/fix", "repair": "/fix", "patch": "/fix",
+                "forge": "/forge", "create": "/forge", "build": "/forge",
+                "chat": "/chat", "ask": "/chat", "tell": "/chat",
+                "analyze": "/analyze", "audit": "/analyze", "check": "/analyze",
+                "decode": "/decode", "translate": "/decode",
+                "lookup": "/lookup", "search": "/lookup",
+                "locate": "/locate", "find": "/locate",
+                "update": "/upgrade", "upgrade": "/upgrade",
+                "sync": "/sync", "doctor": "/doctor",
+                "cloud": "/cloud", "ssh": "/ssh", "server": "/server",
+                "memory": "/memory", "personality": "/personality", "models": "/models"
+            }
+
             if not text.startswith("/"):
-                # Verbs and Aliases mapping
-                verbs = {
-                    "chat": "/chat", "fix": "/fix", "forge": "/forge", 
-                    "decode": "/decode", "lookup": "/lookup", "locate": "/locate",
-                    "analyze": "/analyze", "undo": "/undo", "cloud": "/cloud",
-                    "ssh": "/ssh", "server": "/server", "health": "/health",
-                    "doctor": "/doctor", "git": "/git", "update": "/upgrade",
-                    "upgrade": "/upgrade", "sync": "/sync"
-                }
-                if first_word in verbs:
-                    text = verbs[first_word] + " " + potential_args
+                if first_word in verb_map:
+                    # Rewrite text as a slash command
+                    args = " ".join(tokens[1:])
+                    text = verb_map[first_word] + " " + args
+                elif any(kw in text_low for kw in ["fix this", "bug in", "repair my"]):
+                    text = "/fix " + text
                 else:
-                    # Default behavior for pure natural language
+                    # Default to Chat or Nave Loop
                     config = load_config()
-                    if config.get("personality") == "nave_ai": run_nave_loop(text)
-                    else: chat(text)
+                    if config.get("personality") == "nave_ai": 
+                        run_nave_loop(text)
+                    else: 
+                        chat(text)
                     continue
 
-            # Standard Slash Command Processing
+            # --- Standard Command Processing ---
             parts = text.split(" ", 2)
             cmd = parts[0].lower()
+            
+            # Final command sanitization
             if cmd == "/update": cmd = "/upgrade"
 
-            prompt_name = parts[1][1:] if len(parts) > 1 and parts[1].startswith("@") else None
-            args = parts[2] if prompt_name and len(parts) > 2 else (" ".join(parts[1:]) if len(parts) > 1 else "")
+            # Parse prompt override (@persona)
+            prompt_name = None
+            args = ""
+            if len(parts) > 1:
+                if parts[1].startswith("@"):
+                    prompt_name = parts[1][1:]
+                    args = parts[2] if len(parts) > 2 else ""
+                else:
+                    args = " ".join(parts[1:])
 
+            # --- Routing Table ---
             if cmd == "/chat": chat(args or Prompt.ask("Question"), prompt=prompt_name)
             elif cmd == "/fix": fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name)
             elif cmd == "/forge": forge(args or Prompt.ask("Task to forge"))
-            elif cmd == "/decode": decode(args or Prompt.ask("Text/Script to decode"))
-            elif cmd == "/lookup": lookup(args or Prompt.ask("Command to find"))
+            elif cmd == "/decode": decode(args or Prompt.ask("Content to decode"))
+            elif cmd == "/lookup": lookup(args or Prompt.ask("What are you looking for?"))
             elif cmd == "/hardware": hardware_menu()
             elif cmd == "/voice": voice()
             elif cmd == "/watch": watch()
@@ -131,7 +156,7 @@ def menu():
             elif cmd == "/init": init()
             elif cmd == "/analyze": analyze(args or ".")
             elif cmd == "/analyze-file": analyze_file(args or Prompt.ask("Path to file"), prompt=prompt_name)
-            elif cmd == "/locate": locate(args or Prompt.ask("Filename to search for"))
+            elif cmd == "/locate": locate(args or Prompt.ask("Name to search for"))
             elif cmd == "/network": menus.network_menu()
             elif cmd == "/ssh": menus.ssh_command(args)
             elif cmd == "/server": menus.server_menu()
@@ -146,31 +171,30 @@ def menu():
             elif cmd == "/focus": focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]: troubleshoot(args or Prompt.ask("Failing command"), prompt=prompt_name)
             elif cmd == "/free": free_keys()
-            elif cmd == "/connect": connect_menu()
             elif cmd == "/doctor": run_doctor()
-            elif cmd == "/git": ai_git(args or Prompt.ask("What git operation?"))
+            elif cmd == "/git": ai_git(args or Prompt.ask("Git task?"))
             elif cmd == "/search":
-                q = args or Prompt.ask("Search session history")
+                q = args or Prompt.ask("Search term")
                 results = session.history.get_strings()
                 matches = [s for s in results if q.lower() in s.lower()]
-                console.print(Panel("\n".join(matches[-10:]), title=f"History Search: {q}"))
+                console.print(Panel("\n".join(matches[-10:]), title=f"History: {q}"))
             elif cmd == "/clear": console.clear()
-            elif cmd in ["/help", "/h"]: menus.robust_help()
+            elif cmd == "/help": menus.robust_help()
             elif cmd == "/health":
-                health_results = check_system_health()
-                display_health_report(health_results)
+                results = check_system_health()
+                display_health_report(results)
             elif cmd == "/upgrade":
                 from core.update import manual_upgrade
                 manual_upgrade()
-            elif cmd == "/sync":
-                update_all_repos()
+            elif cmd == "/sync": update_all_repos()
             elif cmd == "/exit": break
-            else: console.print(f"[red]Unknown command: {cmd}. Type /help for options.[/red]")
+            else:
+                console.print(f"[red]Unknown command: {cmd}. Try /help.[/red]")
 
         except KeyboardInterrupt:
             now = time.time()
             if now - last_ctrl_c < 2: 
-                console.print("\n[yellow]Secure shutdown initiated. Goodbye.[/yellow]"); break
+                console.print("\n[yellow]Shutdown complete. Goodbye.[/yellow]"); break
             else:
                 console.print("\n[bold red]Press Ctrl+C again to exit JARVIS.[/bold red]")
                 last_ctrl_c = now
@@ -199,59 +223,57 @@ def chat(q: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] 
     console.print(Markdown(response))
 
 @app.command()
+def fix(issue: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
+    """Autonomous debug loop."""
+    debug_loop(issue, model=model, prompt=prompt)
+
+@app.command()
 def forge(task: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None):
     """Hardcore code synthesis for creating unprecedented solutions."""
     forge_loop(task, model=model)
 
 @app.command()
 def decode(content: str):
-    """Universal decoder for scripts, languages, and coding paradigms."""
-    console.print(f"[bold cyan]Decoding:[/bold cyan] {content[:50]}...")
-    prompt = f"Decode and explain the following content. If it's a script, explain logic. If it's a language/font, translate. Provide maximum technical depth: {content}"
+    """Universal decoder for technical content."""
+    prompt = f"Decode and explain with maximum depth: {content}"
     response = think("", prompt, prompt_name="nave_sovereign")
     console.print(Markdown(response))
 
 @app.command()
 def lookup(request: str):
-    """Smart command discovery (Gemini-style)."""
-    prompt = f"The user wants to perform this action: {request}. Suggest the best shell command or JARVIS command to use."
+    """Smart command discovery."""
+    prompt = f"Suggest best command for: {request}"
     response = think("", prompt)
-    console.print(Panel(Markdown(response), title="Command Discovery"))
+    console.print(Panel(Markdown(response), title="Lookup"))
 
 @app.command()
 def hardware_menu():
-    """Manage and probe physical ports and USB devices."""
+    """Physical port and USB diagnostics."""
     from tools.hardware import get_hardware_summary, list_usb_devices, probe_ports
     while True:
         console.print(get_hardware_summary())
-        console.print("\n[1] List USB Details | [2] Full System Probe | [b] Back")
-        choice = Prompt.ask("Choice", choices=["1", "2", "b"], default="b")
-        if choice == "1": console.print(Panel(list_usb_devices(), title="USB Diagnostics"))
-        elif choice == "2": console.print(Panel(probe_ports(), title="System Port Probe"))
+        console.print("\n[1] USB | [2] All Ports | [b] Back")
+        c = Prompt.ask("Choice", choices=["1", "2", "b"], default="b")
+        if c == "1": console.print(Panel(list_usb_devices()))
+        elif c == "2": console.print(Panel(probe_ports()))
         else: break
 
 @app.command()
-def fix(issue: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
-    """Autonomous debug loop."""
-    debug_loop(issue, model=model, prompt=prompt)
-
-@app.command()
 def analyze_file(path: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
-    """Deeply analyze a single file."""
+    """Deep audit of a single file."""
     if not os.path.exists(path):
-        console.print(f"[red]Error: File not found:[/red] {path}"); return
+        console.print(f"[red]Error: Not found:[/red] {path}"); return
     with open(path, 'r') as f: content = f.read()
-    console.print(f"[bold cyan]Analyzing file:[/bold cyan] {path}...")
-    response = think(f"File Path: {path}\nFile Content:\n{content}", "Analyze for bugs and improvements.", model=model, prompt_name=prompt)
-    console.print(Markdown(response))
+    console.print(f"[bold cyan]Auditing:[/bold cyan] {path}...")
+    res = think(f"Path: {path}\nContent:\n{content}", "Perform deep security and performance audit.", model=model, prompt_name=prompt)
+    console.print(Markdown(res))
 
 @app.command()
 def locate(name: str, root: str = "/"):
-    """Search for a file/directory across the computer."""
+    """Global system search."""
     from tools.search import system_find
-    console.print(f"[bold cyan]Searching for '{name}' starting from {root}...[/bold cyan]")
-    results = system_find(name, root)
-    console.print(Panel(results, title=f"Locate Results: {name}"))
+    console.print(f"[bold cyan]Searching for '{name}'...[/bold cyan]")
+    res = system_find(name, root); console.print(Panel(res, title="Locate"))
 
 @app.command()
 def troubleshoot(command: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
@@ -260,20 +282,20 @@ def troubleshoot(command: str, model: Annotated[Optional[str], typer.Option("--m
 
 @app.command()
 def undo(path: str):
-    """Rollback last edit."""
+    """Safety rollback."""
     from tools.editor import undo_last_edit
-    res = undo_last_edit(path); console.print(f"[green]{res}[/green]")
+    console.print(f"[green]{undo_last_edit(path)}[/green]")
 
 @app.command()
 def dashboard():
-    """Launch multi-window live dashboard."""
+    """System monitor TUI."""
     from core.dashboard import Dashboard; Dashboard().run()
 
 @app.command()
 def focus(path: str):
-    """Set working context."""
-    if os.path.exists(path): console.print(Panel(f"[green]Focus set to:[/green] {os.path.abspath(path)}", border_style="green"))
-    else: console.print(f"[red]Error: Path does not exist:[/red] {path}")
+    """Set context path."""
+    if os.path.exists(path): console.print(Panel(f"[green]Focus set:[/green] {os.path.abspath(path)}", border_style="green"))
+    else: console.print(f"[red]Error: Missing path:[/red] {path}")
 
 @app.command()
 def voice():
@@ -289,82 +311,38 @@ def config(): menus.config_menu()
 @app.command()
 def analyze(path: str = "."):
     from tools.analytics import project_summary
-    summary = project_summary(path)
-    table = Table(title="Health Stats", border_style="cyan")
-    table.add_row("Files", str(summary["total_files"])); table.add_row("Lines", str(summary["total_lines"]))
-    console.print(table)
+    s = project_summary(path)
+    t = Table(title="Health", border_style="cyan")
+    t.add_row("Files", str(s["total_files"])); t.add_row("Lines", str(s["total_lines"]))
+    console.print(t)
 
 @app.command()
-def github(action: str, repo: str, title: str = "", body: str = "", head: str = "", base: str = "main"):
+def github(action: str, repo: str, title: str = "", body: str = ""):
     from tools.github import github_tool
     if action == "info": res = github_tool.get_repo_info(repo)
     elif action == "issue": res = github_tool.create_issue(repo, title, body)
-    else: res = "Unknown action."
-    console.print(Panel(str(res), title=f"GitHub Result: {action}"))
-
-@app.command()
-def memory(action: str = "stats", q: str = ""):
-    from memory.vector import get_stats, search, clear
-    if action == "stats": console.print(Panel(f"Total Memories: {get_stats()['count']}"))
-    elif action == "search":
-        res = search(q)
-        if res: console.print(Panel("\n".join(res)))
-    elif action == "clear":
-        if Confirm.ask("Clear all?"): console.print(f"[green]{clear()}[/green]")
+    else: res = "Unknown."
+    console.print(Panel(str(res), title="GitHub"))
 
 @app.command()
 def run_doctor():
-    from core.deps import ensure_all
-    ensure_all()
-    results = check_system_health()
-    display_health_report(results)
+    from core.deps import ensure_all; ensure_all()
+    results = check_system_health(); display_health_report(results)
 
 @app.command()
 def ai_git(task: str):
-    prompt = f"Perform git task: {task}"
-    response = think("", prompt); console.print(Markdown(response))
-
-@app.command()
-def connect():
-    """Streamlined interface to link AI accounts and save API keys."""
-    connect_menu()
-
-def connect_menu():
-    console.print(Panel("🌐 [bold cyan]Account Connection Center[/bold cyan]", border_style="cyan"))
-    console.print("Select a provider to get your key and save it to JARVIS:")
-    console.print("\n[1] Google Gemini | [2] OpenAI | [3] Anthropic | [4] xAI (Grok) | [5] GitHub | [b] Back")
-    
-    choice = Prompt.ask("Choice", choices=["1", "2", "3", "4", "5", "b"], default="b")
-    
-    mapping = {
-        "1": {"name": "Gemini", "url": "https://aistudio.google.com/app/apikey", "key": "gemini_api_key"},
-        "2": {"name": "OpenAI", "url": "https://platform.openai.com/api-keys", "key": "openai_api_key"},
-        "3": {"name": "Anthropic", "url": "https://console.anthropic.com/settings/keys", "key": "anthropic_api_key"},
-        "4": {"name": "Grok", "url": "https://console.x.ai/", "key": "xai_api_key"},
-        "5": {"name": "GitHub", "url": "https://github.com/settings/tokens", "key": "github_token"}
-    }
-    
-    if choice in mapping:
-        info = mapping[choice]
-        console.print(f"\n[bold]1. Get your key here:[/bold] {info['url']}")
-        if Confirm.ask(f"Do you want to save your {info['name']} key now?"):
-            key_val = Prompt.ask(f"Paste your {info['name']} key", password=True)
-            config = load_config()
-            config[info['key']] = key_val
-            save_config(config)
-            console.print(f"[green]✅ {info['name']} key saved successfully![/green]")
+    res = think("", f"Git task: {task}"); console.print(Markdown(res))
 
 @app.command()
 def init():
-    if os.path.exists("JARVIS.md"): console.print("[yellow]Already exists.[/yellow]")
+    if os.path.exists("JARVIS.md"): console.print("[yellow]Exists.[/yellow]")
     else:
         with open("JARVIS.md", "w") as f: f.write("# JARVIS Rules")
-        console.print("[green]Created JARVIS.md[/green]")
+        console.print("[green]Created.[/green]")
 
 def show_model_status():
-    provider_obj = get_provider()
-    p_name = get_env_with_config("provider") or "ollama"
-    status_info = f"Provider: {p_name.upper()}\nModel: {provider_obj.model}"
-    console.print(Panel(status_info, title="Model Status", border_style="magenta"))
+    p_obj = get_provider(); p_name = get_env_with_config("provider") or "ollama"
+    status = f"Brain: {p_name.upper()}\nModel: {p_obj.model}"
+    console.print(Panel(status, title="Status", border_style="magenta"))
 
 if __name__ == "__main__": app()
