@@ -48,7 +48,7 @@ COMMANDS = [
     "/chat", "/fix", "/forge", "/decode", "/lookup", "/hardware", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
     "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
-    "/git", "/nave", "/sync", "/upgrade", "/update", "/connect", "/launch", "/plan", "/exit"
+    "/git", "/nave", "/sync", "/upgrade", "/update", "/connect", "/launch", "/plan", "/restart", "/exit"
 ]
 
 def get_bottom_toolbar():
@@ -57,9 +57,10 @@ def get_bottom_toolbar():
         config = load_config()
         model = config.get("jarvis_model", "unknown")
         provider = config.get("provider", "ollama")
-        return HTML(f'<cyan>📁 {cwd}</cyan> | <magenta>🧠 {provider.upper()} ({model})</magenta>')
+        # Fixed markup: use style attributes for prompt_toolkit HTML
+        return HTML(f'<style fg="cyan">📁 {cwd}</style> | <style fg="magenta">🧠 {provider.upper()} ({model})</style>')
     except:
-        return HTML('<red>System Initializing...</red>')
+        return HTML('<style fg="red">System Initializing...</style>')
 
 @app.command()
 def menu():
@@ -93,12 +94,11 @@ def menu():
             if text in ["/exit", "exit", "quit"]:
                 console.print("[yellow]Goodbye, Sir.[/yellow]"); break
             
-            # --- Smart Intent Router ---
+            # --- Smart Intent Router (V3: High-Precision Aggressive) ---
             text_low = text.lower()
             tokens = text.split()
             first_word = tokens[0].lower() if tokens else ""
             
-            # 1. Alias & Verb Mapping
             verb_map = {
                 "fix": "/fix", "repair": "/fix", "patch": "/fix",
                 "forge": "/forge", "create": "/forge", "build": "/forge",
@@ -108,23 +108,29 @@ def menu():
                 "lookup": "/lookup", "search": "/lookup",
                 "locate": "/locate", "find": "/locate",
                 "update": "/upgrade", "upgrade": "/upgrade",
-                "sync": "/sync", "doctor": "/doctor",
+                "sync": "/sync", "doctor": "/doctor", "plan": "/plan",
+                "restart": "/restart", "reboot": "/restart",
                 "cloud": "/cloud", "ssh": "/ssh", "server": "/server",
                 "memory": "/memory", "personality": "/personality", "models": "/models"
             }
 
             if not text.startswith("/"):
-                if first_word in verb_map:
-                    # Intelligently isolate the target for 'find' or 'fix'
+                # A. Global Keyword Priority (e.g. "find X and fix Y" -> /fix)
+                if any(kw in text_low for kw in ["fix", "repair", "patch", "debug"]):
+                    # Strip common noise from natural language to isolate target
+                    target = text_low.replace("find", "").replace("and fix", "").replace("fix", "").replace("broken code", "").replace("on my computer", "").replace("on computer", "").strip()
+                    text = f"/fix {target}"
+                
+                # B. Verb Mapping (First Word)
+                elif first_word in verb_map:
                     args = " ".join(tokens[1:])
-                    if first_word in ["find", "locate", "fix", "repair"]:
-                        # Take only the first word after 'find' as the target
+                    if first_word in ["find", "locate"]:
+                        # Extract the first probable target (e.g. 'find project_name' -> 'project_name')
                         args = tokens[1] if len(tokens) > 1 else ""
                     text = verb_map[first_word] + " " + args
-                elif any(kw in text_low for kw in ["fix this", "bug in", "repair my"]):
-                    text = "/fix " + text
+                
+                # C. Natural Language Fallback
                 else:
-                    # Default to Chat or Nave Loop
                     config = load_config()
                     if config.get("personality") == "nave_ai": 
                         run_nave_loop(text)
@@ -175,15 +181,16 @@ def menu():
             elif cmd == "/prompts": menus.prompts_menu()
             elif cmd == "/cloud": menus.cloud_menu()
             elif cmd == "/connect": menus.connect_menu()
+            elif cmd == "/launch":
+                t = args or Prompt.ask("AI agent to launch", choices=["claude-desktop", "claude", "openclaw", "hermes", "opencode", "codex", "copilot", "droid", "pi"])
+                launch(tool=t)
             elif cmd == "/model": show_model_status()
             elif cmd == "/focus": focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]: troubleshoot(args or Prompt.ask("Failing command"), prompt=prompt_name)
             elif cmd == "/free": free_keys()
             elif cmd == "/doctor": run_doctor()
             elif cmd == "/git": ai_git(args or Prompt.ask("Git task?"))
-            elif cmd == "/nave":
-                q = args or Prompt.ask("Technical idea to refine?")
-                res = run_nave_loop(q); console.print(Markdown(res))
+            elif cmd == "/restart": restart()
             elif cmd == "/search":
                 q = args or Prompt.ask("Search term")
                 results = session.history.get_strings()
@@ -226,6 +233,12 @@ def setup():
     setup_wizard()
 
 @app.command()
+def restart():
+    """Restart the JARVIS process to apply updates or refresh state."""
+    console.print("[yellow]🔄 Restarting JARVIS...[/yellow]")
+    os.execv(sys.executable, ['python3'] + sys.argv)
+
+@app.command()
 def chat(q: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
     """Chat with JARVIS."""
     provider = get_env_with_config("provider") or "ollama"
@@ -244,7 +257,7 @@ def plan(task: str, model: Annotated[Optional[str], typer.Option("--model", "-m"
     from core.agent import generate_plan
     console.print(Panel(f"📋 [bold cyan]STRATEGY PHASE:[/bold cyan] {task}", border_style="cyan"))
     res = generate_plan(task, model=model)
-    console.print(Panel(Markdown(res), title="Strategic Plan"))
+    console.print(Panel(Markdown(res), title="Strategic Plan", border_style="green"))
 
 @app.command()
 def forge(task: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None):
@@ -293,6 +306,14 @@ def locate(name: str, root: str = "/"):
     from tools.search import system_find
     console.print(f"[bold cyan]Searching for '{name}'...[/bold cyan]")
     res = system_find(name, root); console.print(Panel(res, title="Locate"))
+
+@app.command()
+def launch(tool: str):
+    """Launch specialized AI agents (Claude, Copilot, etc.) via Ollama."""
+    from tools.launcher import launch_tool
+    console.print(f"[bold cyan]Launching:[/bold cyan] {tool}")
+    res = launch_tool(tool)
+    console.print(f"[green]{res}[/green]")
 
 @app.command()
 def troubleshoot(command: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
@@ -351,14 +372,6 @@ def run_doctor():
 @app.command()
 def ai_git(task: str):
     res = think("", f"Git task: {task}"); console.print(Markdown(res))
-
-@app.command()
-def nave(q: str):
-    """Refine a technical problem or idea using the multi-model Nave AI Redundancy Loop."""
-    from core.nave_loop import run_nave_loop
-    console.print(Panel(f"🚀 [bold cyan]Nave AI Redundancy Loop[/bold cyan]\nRefining: [dim]{q}[/dim]", border_style="cyan"))
-    result = run_nave_loop(q)
-    console.print(Markdown(result))
 
 @app.command()
 def init():

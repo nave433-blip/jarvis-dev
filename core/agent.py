@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 from core.brain import think
 from tools.shell import run, run_simple
 from tools.search import grep, list_files, system_find
@@ -16,6 +17,7 @@ from tools.launcher import launch_tool
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
+from rich.markdown import Markdown
 
 console = Console()
 
@@ -27,6 +29,10 @@ def dispatch_tool(line, next_line):
     
     try:
         args = json.loads(args_str)
+        
+        # GEMINI-STYLE: Execute Tool box
+        console.print(Panel(f"[bold green]▶ EXECUTING {tool_name}[/bold green]\n[dim]{args_str}[/dim]", border_style="green", box=None))
+
         if tool_name == "SEARCH":
             if "grep" in args: return grep(args["grep"])
             return list_files(args.get("glob", "**/*"))
@@ -104,23 +110,20 @@ def debug_loop(issue, model=None, prompt=None):
         locations = system_find(issue)
         if locations and "error" not in locations.lower():
             context += f"\nNote: I found potential locations for this project:\n{locations}"
-            console.print(f"[green]✅ Found potential project path: {locations.splitlines()[0]}[/green]")
+            console.print(f"[green]Found potential project path: {locations.splitlines()[0]}[/green]")
 
     for i in range(10): 
         from rich.status import Status
-        from rich.syntax import Syntax
         
         with Status(f"[bold cyan]Cycle {i+1}:[/bold cyan] JARVIS is reasoning...", spinner="dots"):
             response = think(context, "Resolve the issue using tools if necessary. If previous tools failed, try a different approach.", model=model, prompt_name=prompt)
         
-        # GEMINI-STYLE: Separate reasoning from action
+        # GEMINI-STYLE: Separate thoughts from tool calls
         thoughts = ""
-        action_parts = []
-        in_code = False
-        
+        tool_lines = []
         for line in response.splitlines():
             if line.startswith("TOOL:") or line.startswith("ARGS:"):
-                action_parts.append(line)
+                tool_lines.append(line)
             else:
                 thoughts += line + "\n"
 
@@ -130,21 +133,14 @@ def debug_loop(issue, model=None, prompt=None):
         if "ERROR" in response.upper() or "FAILED" in response.upper():
             context += "\nWarning: It seems you hit an error. Try researching the specific error message."
 
-        lines = response.split("\n")
         tool_result = None
-        for j, line in enumerate(lines):
-            if line.startswith("TOOL:") and j + 1 < len(lines):
-                tool_name = line.replace("TOOL:", "").strip()
-                args_str = lines[j+1].replace("ARGS:", "").strip()
-                
-                # GEMINI-STYLE: Output shell box for actions
-                console.print(Panel(f"[bold green]▶ EXECUTING {tool_name}[/bold green]\n[dim]{args_str}[/dim]", border_style="green", box=None))
-                
-                tool_result = dispatch_tool(line, lines[j+1])
+        for j, line in enumerate(tool_lines):
+            if line.startswith("TOOL:") and j + 1 < len(tool_lines):
+                tool_result = dispatch_tool(line, tool_lines[j+1])
                 break
         
         if tool_result:
-            # GEMINI-STYLE: Result box
+            # GEMINI-STYLE: Output shell box for result
             res_panel = Panel(str(tool_result), title="📡 TOOL OUTPUT", border_style="dim")
             console.print(res_panel)
             context += f"\nStep {i+1} Tool Output:\n{tool_result}"
