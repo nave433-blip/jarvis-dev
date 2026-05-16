@@ -90,24 +90,42 @@ def dispatch_tool(line, next_line):
     
     return "Unknown tool"
 
+def generate_plan(task, model=None):
+    """Generate a high-level engineering plan for a task."""
+    return think("", f"Create a step-by-step engineering plan for this task. Do not execute tools, just design the strategy: {task}", model=model, prompt_name="architect")
+
 def debug_loop(issue, model=None, prompt=None):
     context = f"Original Issue: {issue}"
     
     # Auto-Research: If the issue looks like a project name, try to locate it first
     if len(issue.split()) == 1 and not os.path.exists(issue):
         from tools.search import system_find
-        console.print(f"[bold cyan]🔍 Project '{issue}' not in current folder. Scanning system for matches...[/bold cyan]")
+        console.print(Panel(f"🔍 [bold cyan]ISOLATING TARGET:[/bold cyan] {issue}\n[dim]Scanning system for project root...[/dim]", border_style="cyan"))
         locations = system_find(issue)
         if locations and "error" not in locations.lower():
             context += f"\nNote: I found potential locations for this project:\n{locations}"
-            console.print(f"[green]Found potential project path: {locations.splitlines()[0]}[/green]")
+            console.print(f"[green]✅ Found potential project path: {locations.splitlines()[0]}[/green]")
 
     for i in range(10): 
         from rich.status import Status
-        with Status(f"[bold cyan]Cycle {i+1}:[/bold cyan] AI is reasoning...", spinner="dots"):
+        from rich.syntax import Syntax
+        
+        with Status(f"[bold cyan]Cycle {i+1}:[/bold cyan] JARVIS is reasoning...", spinner="dots"):
             response = think(context, "Resolve the issue using tools if necessary. If previous tools failed, try a different approach.", model=model, prompt_name=prompt)
         
-        print("\nJARVIS RESPONSE:\n", response)
+        # GEMINI-STYLE: Separate reasoning from action
+        thoughts = ""
+        action_parts = []
+        in_code = False
+        
+        for line in response.splitlines():
+            if line.startswith("TOOL:") or line.startswith("ARGS:"):
+                action_parts.append(line)
+            else:
+                thoughts += line + "\n"
+
+        if thoughts.strip():
+            console.print(Panel(Markdown(thoughts), title=f"💭 THOUGHTS: Cycle {i+1}", border_style="blue", subtitle="[dim]Gemini-Style Reasoning[/dim]"))
         
         if "ERROR" in response.upper() or "FAILED" in response.upper():
             context += "\nWarning: It seems you hit an error. Try researching the specific error message."
@@ -116,11 +134,19 @@ def debug_loop(issue, model=None, prompt=None):
         tool_result = None
         for j, line in enumerate(lines):
             if line.startswith("TOOL:") and j + 1 < len(lines):
+                tool_name = line.replace("TOOL:", "").strip()
+                args_str = lines[j+1].replace("ARGS:", "").strip()
+                
+                # GEMINI-STYLE: Output shell box for actions
+                console.print(Panel(f"[bold green]▶ EXECUTING {tool_name}[/bold green]\n[dim]{args_str}[/dim]", border_style="green", box=None))
+                
                 tool_result = dispatch_tool(line, lines[j+1])
                 break
         
         if tool_result:
-            print("\nTOOL RESULT:\n", tool_result)
+            # GEMINI-STYLE: Result box
+            res_panel = Panel(str(tool_result), title="📡 TOOL OUTPUT", border_style="dim")
+            console.print(res_panel)
             context += f"\nStep {i+1} Tool Output:\n{tool_result}"
         else:
             ok = input("\nJARVIS seems to have finished. Exit? (y/n): ")

@@ -39,6 +39,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.formatted_text import HTML
 
 app = typer.Typer(help="🚀 JARVIS: The Ultimate Local AI Coding Assistant")
 console = Console()
@@ -47,9 +48,8 @@ COMMANDS = [
     "/chat", "/fix", "/forge", "/decode", "/lookup", "/hardware", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
     "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
-    "/git", "/nave", "/sync", "/upgrade", "/update", "/connect", "/launch", "/exit"
-    ]
-
+    "/git", "/nave", "/sync", "/upgrade", "/update", "/connect", "/launch", "/plan", "/exit"
+]
 
 def get_bottom_toolbar():
     try:
@@ -57,9 +57,9 @@ def get_bottom_toolbar():
         config = load_config()
         model = config.get("jarvis_model", "unknown")
         provider = config.get("provider", "ollama")
-        return f" [cyan]📁 {cwd}[/cyan] | [magenta]🧠 {provider.upper()} ({model})[/magenta]"
+        return HTML(f'<cyan>📁 {cwd}</cyan> | <magenta>🧠 {provider.upper()} ({model})</magenta>')
     except:
-        return " [red]System Initializing...[/red]"
+        return HTML('<red>System Initializing...</red>')
 
 @app.command()
 def menu():
@@ -115,8 +115,11 @@ def menu():
 
             if not text.startswith("/"):
                 if first_word in verb_map:
-                    # Rewrite text as a slash command
+                    # Intelligently isolate the target for 'find' or 'fix'
                     args = " ".join(tokens[1:])
+                    if first_word in ["find", "locate", "fix", "repair"]:
+                        # Take only the first word after 'find' as the target
+                        args = tokens[1] if len(tokens) > 1 else ""
                     text = verb_map[first_word] + " " + args
                 elif any(kw in text_low for kw in ["fix this", "bug in", "repair my"]):
                     text = "/fix " + text
@@ -149,6 +152,7 @@ def menu():
             # --- Routing Table ---
             if cmd == "/chat": chat(args or Prompt.ask("Question"), prompt=prompt_name)
             elif cmd == "/fix": fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name)
+            elif cmd == "/plan": plan(args or Prompt.ask("What task do you want a plan for?"))
             elif cmd == "/forge": forge(args or Prompt.ask("Task to forge"))
             elif cmd == "/decode": decode(args or Prompt.ask("Content to decode"))
             elif cmd == "/lookup": lookup(args or Prompt.ask("What are you looking for?"))
@@ -233,6 +237,14 @@ def chat(q: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] 
 def fix(issue: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
     """Autonomous debug loop."""
     debug_loop(issue, model=model, prompt=prompt)
+
+@app.command()
+def plan(task: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None):
+    """Design a detailed engineering strategy before execution."""
+    from core.agent import generate_plan
+    console.print(Panel(f"📋 [bold cyan]STRATEGY PHASE:[/bold cyan] {task}", border_style="cyan"))
+    res = generate_plan(task, model=model)
+    console.print(Panel(Markdown(res), title="Strategic Plan"))
 
 @app.command()
 def forge(task: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None):
