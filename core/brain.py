@@ -1,10 +1,99 @@
 import requests
 import os
+import json
 from memory.vector import add, search
 
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_URL = f"{OLLAMA_HOST}/api/generate"
-MODEL = os.getenv("JARVIS_MODEL", "llama3")
+class LLMProvider:
+    def ask(self, prompt, context=""):
+        raise NotImplementedError
+
+class OllamaProvider(LLMProvider):
+    def __init__(self):
+        self.host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        self.url = f"{self.host}/api/generate"
+        self.model = os.getenv("JARVIS_MODEL", "llama3")
+
+    def ask(self, prompt, context=""):
+        try:
+            r = requests.post(self.url, json={
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False
+            })
+            r.raise_for_status()
+            return r.json()["response"]
+        except Exception as e:
+            return f"Ollama Error: {e}"
+
+class GeminiProvider(LLMProvider):
+    def __init__(self):
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        self.model = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+        self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+
+    def ask(self, prompt, context=""):
+        if not self.api_key: return "Gemini API Key missing."
+        try:
+            headers = {'Content-Type': 'application/json'}
+            data = {"contents": [{"parts": [{"text": prompt}]}]}
+            r = requests.post(self.url, headers=headers, json=data)
+            r.raise_for_status()
+            return r.json()['candidates'][0]['content']['parts'][0]['text']
+        except Exception as e:
+            return f"Gemini Error: {e}"
+
+class ClaudeProvider(LLMProvider):
+    def __init__(self):
+        self.api_key = os.getenv("ANTHROPIC_API_KEY")
+        self.model = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20240620")
+
+    def ask(self, prompt, context=""):
+        if not self.api_key: return "Claude API Key missing."
+        try:
+            headers = {
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+            data = {
+                "model": self.model,
+                "max_tokens": 4096,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+            r = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=data)
+            r.raise_for_status()
+            return r.json()["content"][0]["text"]
+        except Exception as e:
+            return f"Claude Error: {e}"
+
+class GrokProvider(LLMProvider):
+    def __init__(self):
+        self.api_key = os.getenv("XAI_API_KEY")
+        self.model = "grok-beta" # Placeholder
+
+    def ask(self, prompt, context=""):
+        if not self.api_key: return "Grok API Key missing."
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+            r = requests.post("https://api.x.ai/v1/chat/completions", headers=headers, json=data)
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            return f"Grok Error: {e}"
+
+def get_provider():
+    p = os.getenv("JARVIS_PROVIDER", "ollama").lower()
+    if p == "gemini": return GeminiProvider()
+    if p == "claude": return ClaudeProvider()
+    if p == "grok": return GrokProvider()
+    return OllamaProvider()
 
 def get_project_instructions():
     if os.path.exists("JARVIS.md"):
@@ -12,57 +101,24 @@ def get_project_instructions():
             return f.read()
     return ""
 
-def ask(prompt):
-    try:
-        r = requests.post(OLLAMA_URL, json={
-            "model": MODEL,
-            "prompt": prompt,
-            "stream": False
-        })
-        r.raise_for_status()
-        return r.json()["response"]
-    except Exception as e:
-        return f"Error connecting to Ollama at {OLLAMA_URL}: {e}"
-
 def think(context, task):
+    provider = get_provider()
     relevant_memories = search(task, k=3)
     memory_context = "\n".join([f"- {m}" for m in relevant_memories])
     project_rules = get_project_instructions()
 
     prompt = f"""
 You are JARVIS, a senior software engineering assistant.
+System: {project_rules}
+Memories: {memory_context}
+Context: {context}
+Task: {task}
 
-Core workflow: Research -> Strategy -> Execution.
-
-Available Tools:
-- SEARCH: grep(pattern) or glob(pattern)
-- READ: read_file(path, start, end)
-- EDIT: replace(path, old, new)
-- SHELL: run(command)
-- INSTALLER: brew(package), git(repo, dest), or curl(url, output)
-
-Project Rules:
-{project_rules}
-
-Past relevant memories:
-{memory_context}
-
-Current Context:
-{context}
-
-Task:
-{task}
-
-To use a tool, return:
+Return your response in a structured format. If you need tools, use:
 TOOL: <NAME>
-ARGS: <JSON_ARGS>
-
-Otherwise, return:
-- diagnosis
-- steps
-- final thoughts
+ARGS: <JSON>
 """
-    response = ask(prompt)
+    response = provider.ask(prompt)
     if not response.startswith("Error"):
         add(f"Task: {task} | Response: {response[:200]}...")
     return response
