@@ -29,7 +29,7 @@ DEFAULT_CONFIG = {
     "personality": "professional",
     "active_prompt": "default",
     "model_mode": "manual",
-    "self_repair": False
+    "self_repair": True
 }
 
 def load_config():
@@ -55,6 +55,24 @@ def detect_ollama():
         except: continue
     return None
 
+def verify_and_fix_local_llm():
+    """Proactively check local LLM settings and auto-repair if possible."""
+    config = load_config()
+    if config["provider"] == "ollama":
+        # Check if current host is alive
+        try:
+            r = requests.get(f"{config['ollama_host']}/api/tags", timeout=1)
+            if r.status_code != 200: raise Exception("Host not responding")
+        except:
+            console.print("[yellow]⚠️ Configured Ollama host is unreachable. Attempting self-heal...[/yellow]")
+            auto_host = detect_ollama()
+            if auto_host:
+                config["ollama_host"] = auto_host
+                save_config(config)
+                console.print(f"[green]✅ Self-healed: Corrected Ollama host to {auto_host}[/green]")
+            else:
+                console.print("[red]❌ Self-heal failed: No local Ollama instance detected. Please start your server.[/red]")
+
 def smart_input(label, default_val, auto_detect_func=None):
     """Smarter input that offers auto-detection if the user is unsure."""
     if Confirm.ask(f"Do you have the specific {label} details (e.g. URL or Key)?"):
@@ -67,7 +85,7 @@ def smart_input(label, default_val, auto_detect_func=None):
             console.print(f"[green]✅ Auto-detected: {detected}[/green]")
             return detected
             
-    console.print(f"[yellow]⚠️ No specific {label} details provided. Using default/empty.[/yellow]")
+    console.print(f"[yellow]⚠️ No specific {label} details provided. Using default: {default_val}[/yellow]")
     return default_val
 
 def setup_wizard():
@@ -95,7 +113,7 @@ def setup_wizard():
         config["dropbox_token"] = Prompt.ask("Dropbox API Token", default=config.get("dropbox_token", ""), password=True)
         config["gdrive_token"] = Prompt.ask("Google Drive API Token", default=config.get("gdrive_token", ""), password=True)
 
-    config["self_repair"] = Confirm.ask("Enable autonomous self-repair?", default=config.get("self_repair", False))
+    config["self_repair"] = Confirm.ask("Enable autonomous self-repair?", default=config.get("self_repair", True))
 
     save_config(config)
     console.print("\n[green]Configuration saved successfully.[/green]")
