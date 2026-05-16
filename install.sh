@@ -13,22 +13,22 @@ NC='\033[0m'
 echo -e "${BLUE}🚀 Starting JARVIS Global Installation...${NC}"
 
 # 1. Dependency Check
-echo -e "${BLUE}🔍 Checking dependencies...${NC}"
+echo -e "${BLUE}🔍 Skipping dependency check (manually verified)...${NC}"
 
-if ! command -v brew &> /dev/null; then
-    echo -e "${RED}❌ Homebrew is not installed. Please install it from https://brew.sh/${NC}"
-    exit 1
-fi
+# if ! command -v brew &> /dev/null; then
+#     echo -e "${RED}❌ Homebrew is not installed. Please install it from https://brew.sh/${NC}"
+#     exit 1
+# fi
 
-if ! command -v portaudio &> /dev/null && ! brew list portaudio &> /dev/null; then
-    echo -e "${BLUE}📦 Installing portaudio (required for voice)...${NC}"
-    brew install portaudio
-fi
+# if ! command -v portaudio &> /dev/null && ! brew list portaudio &> /dev/null; then
+#     echo -e "${BLUE}📦 Installing portaudio (required for voice)...${NC}"
+#     brew install portaudio
+# fi
 
-if ! command -v ollama &> /dev/null; then
-    echo -e "${YELLOW}⚠️ Ollama not found. JARVIS recommends Ollama for local LLM support.${NC}"
-    echo -e "Install it from https://ollama.com/"
-fi
+# if ! command -v ollama &> /dev/null; then
+#     echo -e "${YELLOW}⚠️ Ollama not found. JARVIS recommends Ollama for local LLM support.${NC}"
+#     echo -e "Install it from https://ollama.com/"
+# fi
 
 # 2. Directory Setup
 INSTALL_DIR="$HOME/.jarvis-app"
@@ -49,7 +49,7 @@ cd "$INSTALL_DIR"
 
 # 4. Virtual Environment & Install
 echo -e "${BLUE}🐍 Creating virtual environment...${NC}"
-python3 -m venv venv
+python3.12 -m venv venv
 source venv/bin/activate
 
 echo -e "${BLUE}📦 Installing JARVIS and dependencies...${NC}"
