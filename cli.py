@@ -46,7 +46,8 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/forge", "/decode", "/lookup", "/hardware", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/health", "/upgrade", "/nave", "/sync", "/doctor", "/git", "/search", "/clear", "/exit"
+    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
+    "/git", "/nave", "/sync", "/upgrade", "/exit"
 ]
 
 @app.command()
@@ -81,28 +82,31 @@ def menu():
             potential_args = cmd_parts[1] if len(cmd_parts) > 1 else ""
             
             if not text.startswith("/"):
-                # If first word matches a known command, treat as that command
+                # Verbs and Aliases mapping
                 verbs = {
                     "chat": "/chat", "fix": "/fix", "forge": "/forge", 
                     "decode": "/decode", "lookup": "/lookup", "locate": "/locate",
                     "analyze": "/analyze", "undo": "/undo", "cloud": "/cloud",
                     "ssh": "/ssh", "server": "/server", "health": "/health",
-                    "doctor": "/doctor", "git": "/git"
+                    "doctor": "/doctor", "git": "/git", "update": "/upgrade",
+                    "upgrade": "/upgrade", "sync": "/sync"
                 }
                 if first_word in verbs:
                     text = verbs[first_word] + " " + potential_args
                 else:
                     # Default behavior for pure natural language
                     config = load_config()
-                    if config.get("personality") == "nave_ai": 
-                        run_nave_loop(text)
-                    else: 
-                        chat(text)
+                    if config.get("personality") == "nave_ai": run_nave_loop(text)
+                    else: chat(text)
                     continue
 
             # Standard Slash Command Processing
             parts = text.split(" ", 2)
             cmd = parts[0].lower()
+            
+            # Handle aliases for slash commands too
+            if cmd == "/update": cmd = "/upgrade"
+
             prompt_name = parts[1][1:] if len(parts) > 1 and parts[1].startswith("@") else None
             args = parts[2] if prompt_name and len(parts) > 2 else (" ".join(parts[1:]) if len(parts) > 1 else "")
 
@@ -142,6 +146,14 @@ def menu():
                 console.print(Panel("\n".join(matches[-10:]), title=f"History Search: {q}"))
             elif cmd == "/clear": console.clear()
             elif cmd in ["/help", "/h"]: menus.robust_help()
+            elif cmd == "/health":
+                health_results = check_system_health()
+                display_health_report(health_results)
+            elif cmd == "/upgrade":
+                from core.update import manual_upgrade
+                manual_upgrade()
+            elif cmd == "/sync":
+                update_all_repos()
             elif cmd == "/exit": break
             else: console.print(f"[red]Unknown command: {cmd}. Type /help for options.[/red]")
 
