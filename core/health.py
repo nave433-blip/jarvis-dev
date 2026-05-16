@@ -9,9 +9,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 console = Console()
 
 REPOS = {
-    "abootool": {"path": "~/abootool", "check": "python3 abootool.py --help", "repair": "pip3 install adb"},
-    "wikiproxy": {"path": "~/wikiproxy", "check": "python3.12 -m wikiproxy --help", "repair": "python3.12 -m pip install fastapi uvicorn aiohttp wikitextparser"},
-    "N4V3R41N": {"path": "~/N4V3R41N-Suite", "check": "./n4v3r41n doctor", "repair": "./n4v3r41n doctor"},
+    # Add other core dependent repos here if any
 }
 
 def check_system_health():

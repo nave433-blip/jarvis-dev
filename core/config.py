@@ -28,7 +28,8 @@ DEFAULT_CONFIG = {
     "github_token": "",
     "personality": "professional",
     "active_prompt": "default",
-    "model_mode": "manual"
+    "model_mode": "manual",
+    "self_repair": False
 }
 
 def load_config():
@@ -96,6 +97,8 @@ def setup_wizard():
         config["nvidia_api_key"] = Prompt.ask("NVIDIA NIM API Key", default=config["nvidia_api_key"], password=True)
         config["xai_api_key"] = Prompt.ask("XAI (Grok) API Key", default=config["xai_api_key"], password=True)
         config["github_token"] = Prompt.ask("GitHub Personal Access Token", default=config["github_token"], password=True)
+
+    config["self_repair"] = Confirm.ask("Enable autonomous self-repair (JARVIS will fix its own crashes)?", default=config.get("self_repair", False))
 
     save_config(config)
     console.print("\n[green]Configuration saved successfully.[/green]")

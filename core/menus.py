@@ -33,6 +33,7 @@ def config_menu():
             "llama_cpp_host": "Host URL for Llama.cpp local server (Default: localhost:8080)",
             "gpt4all_host": "Host URL for GPT4All local API (Default: localhost:4891)",
             "model_mode": "Auto-selection logic: manual, auto-offline, auto-online, or auto-mixed",
+            "self_repair": "Autonomous system healing: Enable/disable automatic repair on errors",
             "dropbox_token": "Token for Dropbox cloud storage access",
             "gdrive_token": "Token for Google Drive cloud storage access"
         }
@@ -43,10 +44,16 @@ def config_menu():
             table.add_row(k, str(val), desc)
         
         console.print(table)
-        console.print("\n[w] Launch Setup Wizard | [e] Edit Single Key | [b] Back")
-        choice = Prompt.ask("Choice", choices=["w", "e", "b"], default="b")
+        console.print("\n[w] Launch Setup Wizard | [e] Edit Single Key | [r] Toggle Self-Repair | [b] Back")
+        choice = Prompt.ask("Choice", choices=["w", "e", "r", "b"], default="b")
         if choice == "w":
             setup_wizard()
+        elif choice == "r":
+            current = config_data.get("self_repair", False)
+            config_data["self_repair"] = not current
+            save_config(config_data)
+            status = "ENABLED" if not current else "DISABLED"
+            console.print(f"[green]Self-Repair {status}[/green]")
         elif choice == "e":
             key = Prompt.ask("Enter the key name to edit")
             if key in config_data:
@@ -110,9 +117,9 @@ def personality_menu():
     config = load_config()
     current = config.get("personality", "professional")
     console.print(Panel(f"Current Personality: [bold cyan]{current.capitalize()}[/bold cyan]", title="Personality Settings"))
-    console.print("\n[1] Professional | [2] Sarcastic (Grok) | [3] Concise | [4] Mentor | [b] Back")
-    choice = Prompt.ask("Select personality", choices=["1", "2", "3", "4", "b"], default="b")
-    mapping = {"1": "professional", "2": "sarcastic", "3": "concise", "4": "mentor"}
+    console.print("\n[1] Professional | [2] Sarcastic (Grok) | [3] Concise | [4] Mentor | [5] Nave AI (Beta) | [b] Back")
+    choice = Prompt.ask("Select personality", choices=["1", "2", "3", "4", "5", "b"], default="b")
+    mapping = {"1": "professional", "2": "sarcastic", "3": "concise", "4": "mentor", "5": "nave_ai"}
     if choice in mapping:
         config["personality"] = mapping[choice]
         save_config(config)

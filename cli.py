@@ -30,6 +30,8 @@ from core.agent import debug_loop, troubleshoot_loop
 from core.config import setup_wizard, get_env_with_config, CONFIG_FILE, load_config, save_config
 from core.ui import display_welcome, get_main_menu_table
 from core.health import check_system_health, display_health_report, auto_repair_workspace
+from core.repair import auto_check_on_launch
+from core.nave_loop import run_nave_loop
 import core.menus as menus
 
 # Prompt Toolkit for slash commands
@@ -43,7 +45,7 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/health", "/upgrade", "/exit"
+    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/health", "/upgrade", "/nave", "/exit"
 ]
 
 @app.command()
@@ -51,12 +53,8 @@ def menu():
     """Launch the interactive Gemini-style slash command menu."""
     display_welcome()
     
-    # 1. System Health Check at Launch
-    health_results = check_system_health()
-    errors_found = display_health_report(health_results)
-    if errors_found:
-        if Confirm.ask("[bold yellow]Issues detected in workspace. Attempt auto-repair?[/bold yellow]"):
-            auto_repair_workspace(health_results)
+    # 1. System Health Check at Launch (Automatic if configured)
+    auto_check_on_launch()
 
     completer = WordCompleter(COMMANDS, ignore_case=True)
     session = PromptSession(completer=completer)
@@ -74,7 +72,12 @@ def menu():
             
             if not text: continue
             if not text.startswith("/"):
-                chat(text)
+                # Use Nave AI loop if personality is set
+                config = load_config()
+                if config.get("personality") == "nave_ai":
+                    nave(text)
+                else:
+                    chat(text)
                 continue
 
             parts = text.split(" ", 2)
@@ -82,7 +85,13 @@ def menu():
             prompt_name = parts[1][1:] if len(parts) > 1 and parts[1].startswith("@") else None
             args = parts[2] if prompt_name and len(parts) > 2 else (" ".join(parts[1:]) if len(parts) > 1 else "")
 
-            if cmd == "/chat": chat(args or Prompt.ask("Question"), prompt=prompt_name)
+            if cmd == "/chat": 
+                config = load_config()
+                if config.get("personality") == "nave_ai":
+                    nave(args or Prompt.ask("Idea to refine"))
+                else:
+                    chat(args or Prompt.ask("Question"), prompt=prompt_name)
+            elif cmd == "/nave": nave(args or Prompt.ask("Idea to refine"))
             elif cmd == "/fix": fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name)
             elif cmd in ["/voice", "/v"]: voice()
             elif cmd in ["/watch", "/w"]: watch()
@@ -353,5 +362,12 @@ def upgrade():
     """Upgrade JARVIS to the latest version."""
     from core.update import manual_upgrade
     manual_upgrade()
+
+@app.command()
+def nave(q: str):
+    """Nave AI Redundancy Loop Refinement."""
+    console.print(Panel(f"🚀 [bold cyan]Nave AI Redundancy Loop[/bold cyan]\nRefining: [dim]{q}[/dim]", border_style="cyan"))
+    result = run_nave_loop(q)
+    console.print(Markdown(result))
 
 if __name__ == "__main__": app()
