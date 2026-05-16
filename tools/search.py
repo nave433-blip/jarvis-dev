@@ -23,11 +23,25 @@ def list_files(pattern="**/*"):
     files = python_glob.glob(pattern, recursive=True)
     return "\n".join([f for f in files if "venv" not in f and ".git" not in f][:100])
 
-def system_find(name, root="/"):
-    """Search for a file/directory by name across the system."""
+def system_find(name, root=None):
+    """Search for a file/directory by name with sensible defaults and timeout."""
+    # Prioritize home directory if no root is specified
+    search_root = root or os.path.expanduser("~")
+    
     try:
-        # We use a safe find command limited to a depth or result count to prevent hanging
-        cmd = f"find {root} -name '*{name}*' -not -path '*/.*' 2>/dev/null | head -n 20"
-        return subprocess.getoutput(cmd)
+        # Limit depth and time to prevent hangs
+        cmd = f"find {search_root} -maxdepth 4 -name '*{name}*' -not -path '*/.*' 2>/dev/null | head -n 20"
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
+        output = result.stdout.strip()
+        
+        if not output and not root:
+            # If not found in home, try / (restricted)
+            cmd = f"find / -maxdepth 3 -name '*{name}*' -not -path '*/.*' 2>/dev/null | head -n 10"
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=20)
+            output = result.stdout.strip()
+            
+        return output or "No matching files found within timeout limits."
+    except subprocess.TimeoutExpired:
+        return "Search timed out. Please provide a more specific root path."
     except Exception as e:
         return f"System search error: {e}"

@@ -31,7 +31,7 @@ class OllamaProvider(LLMProvider):
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False
-            }, timeout=30)
+            }, timeout=60)
             r.raise_for_status()
             return r.json()["response"]
         except Exception as e:
@@ -239,36 +239,19 @@ def think(context, task, model=None, prompt_name=None):
 {system_instruction}
 {personality_prompt}
 
-Core workflow: Research -> Strategy -> Execution.
+Context: {context}
+Task: {task}
 
-Available Tools:
-- SEARCH: grep(pattern) or glob(pattern)
-- SYSTEM_SEARCH: name, root (Search across the entire computer/storage)
+Tools:
+- SEARCH: grep(pattern), glob(pattern)
+- SYSTEM_SEARCH: name, root (System-wide find)
 - READ: read_file(path, start, end)
 - EDIT: replace(path, old, new)
 - SHELL: run(command)
-- INSTALLER: brew(package), git(repo, dest), or curl(url, output)
-- GITHUB: action(info, issue, list_prs, create_pr), repo, title, body, head, base
-- ANALYTICS: action(file, summary), path
-- CLOUD: platform(dropbox, gdrive, icloud), action(list), path/query
-- NETWORK: action(scan, ports), ip, range (Discovery & Fing-style tools)
-- SSH: host, username, command, password, key (Remote server execution)
-- SERVER: action(ports, stats, kill), pid (Monitoring & Management)
-- HARDWARE: action(usb, probe) (Physical port & USB debugging)
+- CLOUD: platform, action, path
+- NETWORK/SSH/SERVER/HARDWARE/GITHUB/ANALYTICS
 
-System Rules:
-{project_rules}
-
-Memories:
-{memory_context}
-
-Context:
-{context}
-
-Task:
-{task}
-
-Return your response in a structured format. If you need tools, use:
+Format:
 TOOL: <NAME>
 ARGS: <JSON>
 """
