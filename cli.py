@@ -25,7 +25,7 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", 
     "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/troubleshoot", "/help", "/exit"
+    "/prompts", "/troubleshoot", "/help", "/exit"
 ]
 
 def display_welcome():
@@ -53,6 +53,7 @@ def get_main_menu_table():
     table.add_row("/memory", "Manage vector memory")
     table.add_row("/personality", "Switch behavior profiles")
     table.add_row("/models", "Switch AI models")
+    table.add_row("/prompts", "Manage system prompts library")
     table.add_row("/focus", "Set context path")
     table.add_row("/troubleshoot", "Auto-fix terminal errors")
     table.add_row("/help", "Show documentation")
@@ -82,14 +83,23 @@ def menu():
                 chat(text)
                 continue
 
-            parts = text.split(" ", 1)
+            parts = text.split(" ", 2)
             cmd = parts[0].lower()
-            args = parts[1] if len(parts) > 1 else ""
+            
+            prompt_name = None
+            args = ""
+            
+            if len(parts) > 1:
+                if parts[1].startswith("@"):
+                    prompt_name = parts[1][1:]
+                    args = parts[2] if len(parts) > 2 else ""
+                else:
+                    args = " ".join(parts[1:])
 
             if cmd == "/chat":
-                chat(args or Prompt.ask("Question"))
+                chat(args or Prompt.ask("Question"), prompt=prompt_name)
             elif cmd == "/fix":
-                fix(args or Prompt.ask("Issue to fix"))
+                fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name)
             elif cmd in ["/voice", "/v"]:
                 voice()
             elif cmd in ["/watch", "/w"]:
@@ -110,6 +120,8 @@ def menu():
                 personality_menu()
             elif cmd == "/models":
                 models_menu()
+            elif cmd == "/prompts":
+                prompts_menu()
             elif cmd == "/focus":
                 focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]:
@@ -175,6 +187,9 @@ def robust_help():
     ### 🎭 /personality
     Switch between Professional, Sarcastic, etc.
 
+    ### 📝 /prompts
+    Manage custom system instructions and roles.
+
     ### ⚙️ /config
     Manage LLM providers and API keys.
     """
@@ -197,17 +212,17 @@ def setup():
 from typing import Optional
 
 @app.command()
-def chat(q: str, model: Optional[str] = typer.Option(None, "--model", "-m", help="Override default LLM model")):
+def chat(q: str, model: Optional[str] = typer.Option(None, "--model", "-m"), prompt: Optional[str] = typer.Option(None, "--prompt", "-p")):
     """Chat with JARVIS."""
     provider = get_env_with_config("provider") or "ollama"
-    console.print(Panel(f"JARVIS [bold blue]({provider})[/bold blue] [dim]model: {model or 'default'}[/dim]", border_style="blue"))
-    response = think("", q, model=model)
+    console.print(Panel(f"JARVIS [bold blue]({provider})[/bold blue] [dim]prompt: {prompt or 'default'}[/dim]", border_style="blue"))
+    response = think("", q, model=model, prompt_name=prompt)
     console.print(Markdown(response))
 
 @app.command()
-def fix(issue: str, model: Optional[str] = typer.Option(None, "--model", "-m", help="Override default LLM model")):
+def fix(issue: str, model: Optional[str] = typer.Option(None, "--model", "-m"), prompt: Optional[str] = typer.Option(None, "--prompt", "-p")):
     """Autonomous debug loop."""
-    debug_loop(issue, model=model)
+    debug_loop(issue, model=model, prompt=prompt)
 
 @app.command()
 def undo(path: str):
@@ -235,9 +250,9 @@ def focus(path: str):
         console.print(f"[red]Error: Path does not exist:[/red] {path}")
 
 @app.command()
-def troubleshoot(command: str, model: Optional[str] = typer.Option(None, "--model", "-m", help="Override default LLM model")):
+def troubleshoot(command: str, model: Optional[str] = typer.Option(None, "--model", "-m"), prompt: Optional[str] = typer.Option(None, "--prompt", "-p")):
     """Run a command and automatically troubleshoot and fix any errors."""
-    troubleshoot_loop(command, model=model)
+    troubleshoot_loop(command, model=model, prompt=prompt)
 
 @app.command()
 def voice():
@@ -411,6 +426,60 @@ def models(provider: str, model: str):
     config["jarvis_model"] = model
     save_config(config)
     console.print(f"[green]Provider set to {provider.upper()}, Model to {model}[/green]")
+
+def prompts_menu():
+    from core.prompts import load_prompts, save_prompt, delete_prompt, list_prompts
+    from core.config import load_config, save_config
+    
+    while True:
+        console.print(list_prompts())
+        config = load_config()
+        current = config.get("active_prompt", "default")
+        console.print(f"Current Active Prompt: [bold cyan]{current}[/bold cyan]")
+        
+        console.print("\n[1] Select Active | [2] Add New | [3] Delete | [b] Back")
+        choice = Prompt.ask("Choice", choices=["1", "2", "3", "b"], default="b")
+        
+        if choice == "1":
+            name = Prompt.ask("Enter prompt name to activate")
+            prompts = load_prompts()
+            if name in prompts:
+                config["active_prompt"] = name
+                save_config(config)
+                console.print(f"[green]Active prompt set to '{name}'[/green]")
+            else:
+                console.print(f"[red]Prompt '{name}' not found.[/red]")
+        elif choice == "2":
+            name = Prompt.ask("Enter new prompt name")
+            text = Prompt.ask("Enter prompt text")
+            res = save_prompt(name, text)
+            console.print(f"[green]{res}[/green]")
+        elif choice == "3":
+            name = Prompt.ask("Enter prompt name to delete")
+            res = delete_prompt(name)
+            if "Error" in res:
+                console.print(f"[red]{res}[/red]")
+            else:
+                console.print(f"[green]{res}[/green]")
+        else:
+            break
+
+@app.command()
+def prompts(action: str = "list", name: str = "", text: str = ""):
+    """Manage custom system prompts (list, add, delete, set)."""
+    from core.prompts import list_prompts, save_prompt, delete_prompt, load_prompts
+    from core.config import load_config, save_config
+    if action == "list":
+        console.print(list_prompts())
+    elif action == "add":
+        console.print(save_prompt(name, text))
+    elif action == "delete":
+        console.print(delete_prompt(name))
+    elif action == "set":
+        config = load_config()
+        config["active_prompt"] = name
+        save_config(config)
+        console.print(f"Active prompt set to {name}")
 
 @app.command()
 def init():

@@ -20,7 +20,8 @@ DEFAULT_CONFIG = {
     "mistral_api_key": "",
     "nvidia_api_key": "",
     "github_token": "",
-    "personality": "professional"
+    "personality": "professional",
+    "active_prompt": "default"
 }
 
 def load_config():

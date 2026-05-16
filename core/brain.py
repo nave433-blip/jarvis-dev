@@ -139,19 +139,28 @@ def get_project_instructions():
             return f.read()
     return ""
 
-def think(context, task, model=None):
+from core.prompts import load_prompts
+
+def think(context, task, model=None, prompt_name=None):
     provider = get_provider(model_override=model)
     relevant_memories = search(task, k=3)
     memory_context = "\n".join([f"- {m}" for m in relevant_memories])
     project_rules = get_project_instructions()
-    
+
+    # Load custom prompt if specified, otherwise use active_prompt from config
+    prompts = load_prompts()
+    active_prompt_name = prompt_name or get_env_with_config("active_prompt") or "default"
+    system_instruction = prompts.get(active_prompt_name, prompts["default"])
+
     personality_type = get_env_with_config("personality") or "professional"
     personality_prompt = PERSONALITIES.get(personality_type, PERSONALITIES["professional"])
 
     prompt = f"""
+{system_instruction}
 {personality_prompt}
 
 Core workflow: Research -> Strategy -> Execution.
+...
 
 Available Tools:
 - SEARCH: grep(pattern) or glob(pattern)

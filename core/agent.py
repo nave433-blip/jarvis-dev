@@ -50,12 +50,12 @@ def dispatch_tool(line, next_line):
     
     return "Unknown tool"
 
-def debug_loop(issue, model=None):
+def debug_loop(issue, model=None, prompt=None):
     context = f"Original Issue: {issue}"
 
     for i in range(10): # More steps for complex reasoning
         print(f"\n--- STEP {i+1} ---")
-        response = think(context, "Resolve the issue using tools if necessary.", model=model)
+        response = think(context, "Resolve the issue using tools if necessary.", model=model, prompt_name=prompt)
         
         print("\nJARVIS RESPONSE:\n", response)
         
@@ -76,7 +76,7 @@ def debug_loop(issue, model=None):
                 return
             context += f"\nUser feedback: Please continue."
 
-def troubleshoot_loop(command, model=None):
+def troubleshoot_loop(command, model=None, prompt=None):
     console.print(f"[bold blue]Troubleshooting command:[/bold blue] {command}")
     
     # Execute the failing command
@@ -96,4 +96,4 @@ def troubleshoot_loop(command, model=None):
     console.print(Panel(error_context, title="Error Captured", border_style="red"))
     
     # Pass to the debug loop for fixing
-    debug_loop(f"Fix the error caused by this command: {command}. Error context: {error_context}", model=model)
+    debug_loop(f"Fix the error caused by this command: {command}. Error context: {error_context}", model=model, prompt=prompt)
