@@ -75,12 +75,32 @@ def menu():
             if text == "/exit":
                 console.print("[yellow]Goodbye, Sir.[/yellow]"); break
             
+            # Smart Parser: Detect command verbs without slashes
+            cmd_parts = text.split(" ", 1)
+            first_word = cmd_parts[0].lower()
+            potential_args = cmd_parts[1] if len(cmd_parts) > 1 else ""
+            
             if not text.startswith("/"):
-                config = load_config()
-                if config.get("personality") == "nave_ai": run_nave_loop(text)
-                else: chat(text)
-                continue
+                # If first word matches a known command, treat as that command
+                verbs = {
+                    "chat": "/chat", "fix": "/fix", "forge": "/forge", 
+                    "decode": "/decode", "lookup": "/lookup", "locate": "/locate",
+                    "analyze": "/analyze", "undo": "/undo", "cloud": "/cloud",
+                    "ssh": "/ssh", "server": "/server", "health": "/health",
+                    "doctor": "/doctor", "git": "/git"
+                }
+                if first_word in verbs:
+                    text = verbs[first_word] + " " + potential_args
+                else:
+                    # Default behavior for pure natural language
+                    config = load_config()
+                    if config.get("personality") == "nave_ai": 
+                        run_nave_loop(text)
+                    else: 
+                        chat(text)
+                    continue
 
+            # Standard Slash Command Processing
             parts = text.split(" ", 2)
             cmd = parts[0].lower()
             prompt_name = parts[1][1:] if len(parts) > 1 and parts[1].startswith("@") else None
