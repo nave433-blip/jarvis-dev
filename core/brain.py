@@ -124,6 +124,13 @@ def get_provider(model_override=None):
             model=model_override or "nvidia/llama-3.1-405b-instruct"
         )
         
+    if p == "free":
+        # Auto-select the best available free tier
+        gemini_key = get_env_with_config("gemini_api_key")
+        if gemini_key:
+            return GeminiProvider(model=model_override or "gemini-1.5-flash")
+        return OllamaProvider(model=model_override)
+        
     return OllamaProvider(model=model_override)
 
 PERSONALITIES = {

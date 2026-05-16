@@ -49,17 +49,21 @@ def dispatch_tool(line, next_line):
         return f"Tool Error: {e}"
     
     return "Unknown tool"
-
 def debug_loop(issue, model=None, prompt=None):
     context = f"Original Issue: {issue}"
 
     for i in range(10): # More steps for complex reasoning
         print(f"\n--- STEP {i+1} ---")
-        response = think(context, "Resolve the issue using tools if necessary.", model=model, prompt_name=prompt)
-        
+        response = think(context, "Resolve the issue using tools if necessary. If previous tools failed, try a different approach.", model=model, prompt_name=prompt)
+
         print("\nJARVIS RESPONSE:\n", response)
-        
+
+        if "ERROR" in response.upper() or "FAILED" in response.upper():
+            context += "\nWarning: It seems you hit an error. Try researching the specific error message."
+
         lines = response.split("\n")
+...
+
         tool_result = None
         for j, line in enumerate(lines):
             if line.startswith("TOOL:") and j + 1 < len(lines):

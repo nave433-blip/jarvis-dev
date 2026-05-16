@@ -25,7 +25,7 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", 
     "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/prompts", "/troubleshoot", "/help", "/exit"
+    "/prompts", "/troubleshoot", "/free", "/help", "/exit"
 ]
 
 def display_welcome():
@@ -126,6 +126,8 @@ def menu():
                 focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]:
                 troubleshoot(args or Prompt.ask("Failing command"))
+            elif cmd == "/free":
+                free_keys()
             elif cmd in ["/help", "/h"]:
                 robust_help()
                 console.print(Align.center(get_main_menu_table()))
@@ -480,6 +482,32 @@ def prompts(action: str = "list", name: str = "", text: str = ""):
         config["active_prompt"] = name
         save_config(config)
         console.print(f"Active prompt set to {name}")
+
+@app.command()
+def free_keys():
+    """Helpful links and automation to get free AI API keys."""
+    info = """
+    # 🎁 Get Started for Free
+    
+    JARVIS can run on 100% free models. Here's how:
+    
+    1. **Google Gemini (Flash):** 
+       - Get a free key at: [https://aistudio.google.com/](https://aistudio.google.com/)
+       - 1,500 requests per day for free.
+    
+    2. **Mistral AI:**
+       - Free tier available for small models and trial credits.
+       - Sign up: [https://console.mistral.ai/](https://console.mistral.ai/)
+    
+    3. **NVIDIA NIM:**
+       - Free credits usually provided upon sign-up.
+       - [https://build.nvidia.com/](https://build.nvidia.com/)
+       
+    4. **Ollama (Local):**
+       - 100% free, forever, runs on your own hardware.
+       - Install: [https://ollama.com/](https://ollama.com/)
+    """
+    console.print(Panel(Markdown(info), title="Free Tier Automation Helper"))
 
 @app.command()
 def init():
