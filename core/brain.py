@@ -123,6 +123,20 @@ def get_provider(model_override=None):
             url="https://integrate.api.nvidia.com/v1/chat/completions",
             model=model_override or "nvidia/llama-3.1-405b-instruct"
         )
+    
+    if p == "lm_studio":
+        return OpenAICompatibleProvider(
+            api_key="lm-studio", # Usually not required
+            url=f"{get_env_with_config('lm_studio_host')}/v1/chat/completions",
+            model=model_override or "local-model"
+        )
+
+    if p == "llama_cpp":
+        return OpenAICompatibleProvider(
+            api_key="sk-no-key-required",
+            url=f"{get_env_with_config('llama_cpp_host')}/v1/chat/completions",
+            model=model_override or "local-model"
+        )
         
     if p == "free":
         # Auto-select the best available free tier

@@ -385,13 +385,14 @@ def models_menu():
     
     console.print(Panel(f"Current Provider: [bold cyan]{current_p.upper()}[/bold cyan]\nCurrent Model: [bold yellow]{current_m}[/bold yellow]", title="LLM Model Selection"))
     
-    console.print("\n[1] Ollama (Local) | [2] OpenAI | [3] Gemini | [4] Claude | [5] Grok | [6] Mistral | [7] NVIDIA NIM | [b] Back")
+    console.print("\n[1] Ollama (Local) | [2] OpenAI | [3] Gemini | [4] Claude | [5] Grok | [6] Mistral | [7] NVIDIA NIM")
+    console.print("[8] LM Studio (Offline) | [9] Llama.cpp (Offline) | [b] Back")
     
-    choice = Prompt.ask("Select provider", choices=["1", "2", "3", "4", "5", "6", "7", "b"], default="b")
+    choice = Prompt.ask("Select provider", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "b"], default="b")
     
     p_mapping = {
         "1": "ollama", "2": "openai", "3": "gemini", "4": "claude", 
-        "5": "grok", "6": "mistral", "7": "nvidia"
+        "5": "grok", "6": "mistral", "7": "nvidia", "8": "lm_studio", "9": "llama_cpp"
     }
     
     if choice in p_mapping:
@@ -405,7 +406,9 @@ def models_menu():
             "claude": ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"],
             "grok": ["grok-beta"],
             "mistral": ["mistral-large-latest", "open-mixtral-8x22b"],
-            "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"]
+            "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"],
+            "lm_studio": ["local-model"],
+            "llama_cpp": ["local-model"]
         }
         
         console.print(f"\n[bold]Common Models for {provider.upper()}:[/bold]")
