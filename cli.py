@@ -125,6 +125,8 @@ def robust_help():
     2. Propose a strategy.
     3. Execute changes using the `EDIT` tool.
     4. Validate and repeat until resolved.
+
+    **Note:** You can use `[a] Allow for session` during an edit confirmation to permit JARVIS to apply all subsequent changes without asking again.
     
     ### 🎙 Voice
     Hands-free control. JARVIS transcribes your speech and pipes it directly into the `Fix` or `Chat` engine.

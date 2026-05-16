@@ -3,11 +3,14 @@ import difflib
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
-from rich.prompt import Confirm
+from rich.prompt import Confirm, Prompt
 import shutil
 
 console = Console()
 BACKUP_DIR = ".jarvis_backups"
+
+# Session state for permissions
+SESSION_PERMITTED = False
 
 def create_backup(file_path):
     if not os.path.exists(BACKUP_DIR):
@@ -33,6 +36,8 @@ def show_diff(file_path, old_content, new_content):
     return True
 
 def replace_in_file(file_path, old_string, new_string, interactive=True):
+    global SESSION_PERMITTED
+    
     if not os.path.exists(file_path):
         return f"Error: File {file_path} not found."
     
@@ -47,18 +52,21 @@ def replace_in_file(file_path, old_string, new_string, interactive=True):
     
     new_content = content.replace(old_string, new_string)
     
-    if interactive:
+    # Check if session-wide permission is already granted
+    if interactive and not SESSION_PERMITTED:
         if show_diff(file_path, content, new_content):
             choice = Prompt.ask(
                 f"Apply changes to {file_path}?",
-                choices=["y", "n", "m"],
+                choices=["y", "n", "m", "a"],
                 default="y"
             )
             if choice == "n":
                 return "Edit rejected by user."
+            if choice == "a":
+                SESSION_PERMITTED = True
+                console.print("[bold green]Session permission granted. All subsequent edits will be applied automatically.[/bold green]")
             if choice == "m":
                 console.print("[yellow]Manual override requested. Opening editor...[/yellow]")
-                # In a real CLI, we might use click.edit() or similar
                 return "Edit paused for manual modification (Feature coming soon)."
     
     # Create backup before applying
