@@ -2,6 +2,7 @@ import requests
 import os
 import json
 from memory.vector import add, search
+from core.config import get_env_with_config
 
 class LLMProvider:
     def ask(self, prompt, context=""):
@@ -9,9 +10,9 @@ class LLMProvider:
 
 class OllamaProvider(LLMProvider):
     def __init__(self):
-        self.host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        self.host = get_env_with_config("ollama_host") or "http://localhost:11434"
         self.url = f"{self.host}/api/generate"
-        self.model = os.getenv("JARVIS_MODEL", "llama3")
+        self.model = get_env_with_config("jarvis_model") or "llama3"
 
     def ask(self, prompt, context=""):
         try:
@@ -27,8 +28,8 @@ class OllamaProvider(LLMProvider):
 
 class GeminiProvider(LLMProvider):
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+        self.api_key = get_env_with_config("gemini_api_key")
+        self.model = get_env_with_config("gemini_model") or "gemini-1.5-pro"
         self.url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
 
     def ask(self, prompt, context=""):
@@ -44,8 +45,8 @@ class GeminiProvider(LLMProvider):
 
 class ClaudeProvider(LLMProvider):
     def __init__(self):
-        self.api_key = os.getenv("ANTHROPIC_API_KEY")
-        self.model = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20240620")
+        self.api_key = get_env_with_config("anthropic_api_key")
+        self.model = get_env_with_config("claude_model") or "claude-3-5-sonnet-20240620"
 
     def ask(self, prompt, context=""):
         if not self.api_key: return "Claude API Key missing."
@@ -68,8 +69,8 @@ class ClaudeProvider(LLMProvider):
 
 class GrokProvider(LLMProvider):
     def __init__(self):
-        self.api_key = os.getenv("XAI_API_KEY")
-        self.model = "grok-beta" # Placeholder
+        self.api_key = get_env_with_config("xai_api_key")
+        self.model = "grok-beta" 
 
     def ask(self, prompt, context=""):
         if not self.api_key: return "Grok API Key missing."
@@ -89,7 +90,8 @@ class GrokProvider(LLMProvider):
             return f"Grok Error: {e}"
 
 def get_provider():
-    p = os.getenv("JARVIS_PROVIDER", "ollama").lower()
+    p = get_env_with_config("provider") or "ollama"
+    p = p.lower()
     if p == "gemini": return GeminiProvider()
     if p == "claude": return ClaudeProvider()
     if p == "grok": return GrokProvider()
@@ -119,6 +121,9 @@ TOOL: <NAME>
 ARGS: <JSON>
 """
     response = provider.ask(prompt)
-    if not response.startswith("Error"):
-        add(f"Task: {task} | Response: {response[:200]}...")
+    if not isinstance(response, str) or response.startswith("Error") or response.endswith("Error"):
+        # Fallback or Error reporting
+        return str(response)
+        
+    add(f"Task: {task} | Response: {response[:200]}...")
     return response

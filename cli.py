@@ -3,6 +3,7 @@ from core.brain import think
 from core.agent import debug_loop
 from voice.voice import run_voice
 from watcher.monitor import start_monitor
+from core.config import setup_wizard, get_env_with_config, CONFIG_FILE
 import os
 from rich.console import Console
 from rich.panel import Panel
@@ -11,10 +12,25 @@ from rich.markdown import Markdown
 app = typer.Typer()
 console = Console()
 
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """JARVIS: Your local AI engineer."""
+    if ctx.invoked_subcommand is None:
+        if not CONFIG_FILE.exists():
+            console.print("[yellow]No configuration found. Starting setup...[/yellow]")
+            setup_wizard()
+        else:
+            console.print(ctx.get_help())
+
+@app.command()
+def setup():
+    """Run the interactive setup wizard to configure providers and API keys."""
+    setup_wizard()
+
 @app.command()
 def chat(q: str):
     """Chat with JARVIS using the configured LLM provider."""
-    provider = os.getenv("JARVIS_PROVIDER", "ollama")
+    provider = get_env_with_config("provider") or "ollama"
     console.print(f"[bold blue]JARVIS ({provider}):[/bold blue]")
     response = think("", q)
     console.print(Markdown(response))
@@ -37,18 +53,19 @@ def watch():
 @app.command()
 def config():
     """Show current configuration and LLM provider."""
-    provider = os.getenv("JARVIS_PROVIDER", "ollama")
-    model = os.getenv("JARVIS_MODEL", "llama3")
+    provider = get_env_with_config("provider") or "ollama"
+    model = get_env_with_config("jarvis_model") or "llama3"
     
     config_info = f"""
+    [bold]Config File:[/bold] {CONFIG_FILE}
+    
     [bold]Current Provider:[/bold] {provider}
     [bold]Model:[/bold] {model}
     
-    [bold]Environment Variables:[/bold]
-    - JARVIS_PROVIDER: {os.getenv("JARVIS_PROVIDER", "Not Set")}
-    - GEMINI_API_KEY: {"[green]Set[/green]" if os.getenv("GEMINI_API_KEY") else "[red]Missing[/red]"}
-    - ANTHROPIC_API_KEY: {"[green]Set[/green]" if os.getenv("ANTHROPIC_API_KEY") else "[red]Missing[/red]"}
-    - XAI_API_KEY: {"[green]Set[/green]" if os.getenv("XAI_API_KEY") else "[red]Missing[/red]"}
+    [bold]API Key Status:[/bold]
+    - GEMINI_API_KEY: {"[green]Set[/green]" if get_env_with_config("gemini_api_key") else "[red]Missing[/red]"}
+    - ANTHROPIC_API_KEY: {"[green]Set[/green]" if get_env_with_config("anthropic_api_key") else "[red]Missing[/red]"}
+    - XAI_API_KEY: {"[green]Set[/green]" if get_env_with_config("xai_api_key") else "[red]Missing[/red]"}
     """
     console.print(Panel(config_info, title="JARVIS Configuration"))
 
