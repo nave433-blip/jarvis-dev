@@ -1,11 +1,14 @@
 import os
 import sys
 
-# 1. Self-Repairing Dependency Check (Run before other imports)
-# Add current dir to path to ensure core.deps can be found
+# 1. Self-Repairing Dependency Check
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from core.deps import ensure_all
 ensure_all()
+
+# 2. Auto-Update Check
+from core.update import auto_update_check, CURRENT_VERSION
+auto_update_check()
 
 import typer
 from core.brain import think, get_provider
@@ -13,7 +16,6 @@ from core.agent import debug_loop, troubleshoot_loop
 from voice.voice import run_voice
 from watcher.monitor import start_monitor
 from core.config import setup_wizard, get_env_with_config, CONFIG_FILE, load_config
-import os
 import time
 from rich.console import Console
 from rich.panel import Panel
@@ -35,43 +37,60 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/prompts", "/cloud", "/troubleshoot", "/free", "/model", "/help", "/exit"
+    "/cloud", "/troubleshoot", "/free", "/model", "/help", "/exit"
 ]
 
-
 def display_welcome():
-    welcome_text = """
-    # JARVIS v1.0
-    The Senior Software Engineering Assistant
-    
-    *Type [bold cyan]/[/bold cyan] to see available commands or [bold yellow]Ctrl+C[/bold yellow] twice to exit.*
+    # Load icon if possible (ASCII art or just a box)
+    logo = """
+    [bold white]      _______[/bold white]
+    [bold white]     |__   __|[/bold white]
+    [bold white]        | |[/bold white]
+    [bold white]        | |[/bold white]
+    [bold white]      __| |[/bold white]
+    [bold white]     |____/ [/bold white]
     """
-    console.print(Panel(Markdown(welcome_text), style="bold blue", border_style="cyan"))
+    
+    splash_text = f"""
+    [bold cyan]JARVIS[/bold cyan] [white]v{CURRENT_VERSION}[/white]
+    [dim]The Advanced AI Engineering Suite[/dim]
+    
+    [bold white]Created by Nave433 (Evan Shipley)[/bold white]
+    
+    *Type [bold cyan]/[/bold cyan] to see commands | [bold yellow]Ctrl+C[/bold yellow] twice to exit*
+    """
+    
+    console.print(Align.center(Panel(
+        Markdown(f"# JARVIS\nCreated by **Nave433 (Evan Shipley)**\n\nVersion: `{CURRENT_VERSION}`"),
+        style="bold blue",
+        border_style="cyan",
+        subtitle="Initializing Systems...",
+        expand=False
+    )))
 
 def get_main_menu_table():
     table = Table(show_header=False, box=None)
     table.add_column("Command", style="cyan", justify="right")
     table.add_column("Description", style="white")
     
-    table.add_row("/chat", "Ask technical questions or get code explanations")
-    table.add_row("/fix", "Launch autonomous agent to research and repair bugs")
-    table.add_row("/analyze", "Run project-wide health, complexity, and hotspot analytics")
-    table.add_row("/analyze-file", "Perform deep security and quality audit on a single file")
-    table.add_row("/locate", "Search for any file or directory across your entire computer")
-    table.add_row("/troubleshoot", "Execute a failing command and auto-fix its errors (Warp Mode)")
-    table.add_row("/undo", "Instantly rollback the last file modification made by JARVIS")
-    table.add_row("/dashboard", "Open the live multi-window system status TUI")
-    table.add_row("/memory", "Search, view stats, or clear JARVIS's long-term vector brain")
-    table.add_row("/personality", "Switch between Professional, Sarcastic, Concise, or Mentor personas")
-    table.add_row("/models", "Browse and switch between LLM providers (NVIDIA, OpenAI, etc.)")
-    table.add_row("/model", "Show active model status, provider info, and current quota")
-    table.add_row("/prompts", "Manage system prompts library and specialized roles")
-    table.add_row("/cloud", "Search and list files on G-Drive, Dropbox, and iCloud")
-    table.add_row("/focus", "Set a specific directory or file as the primary work context")
-    table.add_row("/help", "Open robust system documentation and command guide")
-    table.add_row("/exit", "Securely shutdown and exit the JARVIS interface")
+    table.add_row("/chat", "Consult JARVIS for technical advice or code explanation")
+    table.add_row("/fix", "Autonomous research & repair loop for project bugs")
+    table.add_row("/analyze", "Deep health audit: lines, complexity, and file hotspots")
+    table.add_row("/analyze-file", "Focused security and performance audit on a single file")
+    table.add_row("/locate", "Global system search for files and directories")
+    table.add_row("/troubleshoot", "Warp-style Agent Mode: Run command and auto-fix errors")
+    table.add_row("/undo", "Safety rollback: Revert the last file change made by JARVIS")
+    table.add_row("/dashboard", "Launch live multi-window system monitoring interface")
+    table.add_row("/memory", "Search or manage the persistent vector knowledge base")
+    table.add_row("/personality", "Switch between Professional, Sarcastic, Concise, or Mentor vibes")
+    table.add_row("/models", "Intelligent provider switcher (Ollama, NVIDIA, OpenAI, etc.)")
+    table.add_row("/model", "Detailed status of active model, provider, and current quota")
+    table.add_row("/cloud", "Bridge to Google Drive, Dropbox, and iCloud storage")
+    table.add_row("/focus", "Set a specific path as the primary work context for the agent")
+    table.add_row("/help", "Access detailed system documentation and role guide")
+    table.add_row("/exit", "Secure shutdown of all background threads and exit")
     
-    return Panel(table, title="[bold white]Slash Commands & Capabilities[/bold white]", border_style="blue", expand=False)
+    return Panel(table, title="[bold white]System Commands[/bold white]", border_style="blue", expand=False)
 
 @app.command()
 def menu():
@@ -90,7 +109,7 @@ def menu():
     while True:
         try:
             text = session.prompt('JARVIS > ', style=style).strip()
-            last_ctrl_c = 0 # Reset on successful input
+            last_ctrl_c = 0 # Reset
             
             if not text: continue
             
@@ -139,12 +158,10 @@ def menu():
                 personality_menu()
             elif cmd == "/models":
                 models_menu()
-            elif cmd == "/prompts":
-                prompts_menu()
-            elif cmd == "/cloud":
-                cloud_menu()
             elif cmd == "/model":
                 show_model_status()
+            elif cmd == "/cloud":
+                cloud_menu()
             elif cmd == "/focus":
                 focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]:
@@ -162,7 +179,7 @@ def menu():
 
         except KeyboardInterrupt:
             now = time.time()
-            if now - last_ctrl_c < 2: # 2 seconds threshold
+            if now - last_ctrl_c < 2: 
                 console.print("\n[yellow]Secure shutdown initiated. Goodbye.[/yellow]")
                 break
             else:
@@ -177,49 +194,52 @@ def show_model_status():
     p_name = get_env_with_config("provider") or "ollama"
     model_name = provider_obj.model
     
-    # Quota logic (simplified placeholder as most APIs don't expose this via simple GET)
-    quota = "N/A"
+    quota = "N/A (Unlimited Local)"
     if p_name.lower() in ["gemini"]:
-        quota = "1,500 requests/day (Free Tier)"
-    elif p_name.lower() in ["ollama", "lm_studio", "llama_cpp"]:
-        quota = "N/A (Local)"
+        quota = "1,500 requests/day (Google AI Studio Free Tier)"
+    elif p_name.lower() in ["openai", "claude", "mistral", "nvidia", "grok"]:
+        quota = "Managed by Provider Billing/Tokens"
     
     status_info = f"""
     [bold]Active Provider:[/bold] {p_name.upper()}
     [bold]Active Model:[/bold] {model_name}
     [bold]Current Quota:[/bold] {quota}
+    
+    [dim]Tip: Use '/models' to switch providers or '/free' to see free tier options.[/dim]
     """
-    console.print(Panel(status_info, title="Model Indicator", border_style="magenta"))
+    console.print(Panel(status_info, title="[bold magenta]Active Model Indicator[/bold magenta]", border_style="magenta"))
 
 def config_menu():
-    """Manage global JARVIS settings and API keys."""
+    """Manage global JARVIS settings, identities, and API keys."""
     while True:
         config_data = load_config()
-        table = Table(title="System Configuration", show_header=True, header_style="bold magenta")
+        table = Table(title="Global System Configuration", show_header=True, header_style="bold magenta")
         table.add_column("Setting", style="cyan")
         table.add_column("Value", style="white")
-        table.add_column("Description", style="dim")
+        table.add_column("Functional Description", style="dim")
         
         descriptions = {
-            "provider": "The current LLM service (Ollama, Gemini, OpenAI, etc.)",
-            "jarvis_model": "The specific AI model name being used",
-            "personality": "Behavioral profile (Professional, Sarcastic, etc.)",
-            "active_prompt": "Persistent system role from your Prompt Library",
-            "github_token": "Token used for autonomous PR and Issue management",
-            "gemini_api_key": "API Key for Google Gemini services",
-            "openai_api_key": "API Key for OpenAI services",
-            "anthropic_api_key": "API Key for Anthropic Claude services",
-            "nvidia_api_key": "API Key for NVIDIA NIM services",
-            "xai_api_key": "API Key for xAI Grok services",
-            "mistral_api_key": "API Key for Mistral AI services",
-            "ollama_host": "Local host URL for Ollama server",
-            "lm_studio_host": "Local host URL for LM Studio server",
-            "llama_cpp_host": "Local host URL for Llama.cpp server"
+            "provider": "Primary LLM engine (Ollama, Gemini, OpenAI, Claude, Grok, Mistral, NVIDIA)",
+            "jarvis_model": "The specific AI model version (e.g., llama3, gpt-4o, claude-3-5-sonnet)",
+            "personality": "Tone and detail level of responses (Professional, Sarcastic, Concise, Mentor)",
+            "active_prompt": "Persistent system instructions from your Prompt Library",
+            "github_token": "Allows JARVIS to autonomously manage PRs, Issues, and repo data",
+            "gemini_api_key": "Token for Google Gemini (recommended for high-quality free tier)",
+            "openai_api_key": "Token for OpenAI GPT-4o and GPT-3.5 services",
+            "anthropic_api_key": "Token for Claude 3.5 Sonnet and Opus services",
+            "nvidia_api_key": "Token for NVIDIA NIM GPU-accelerated model hosting",
+            "xai_api_key": "Token for xAI Grok-Beta services",
+            "mistral_api_key": "Token for Mistral Large and Pixtral services",
+            "ollama_host": "Host URL for your local Ollama server (Default: localhost:11434)",
+            "lm_studio_host": "Host URL for LM Studio local API (Default: localhost:1234)",
+            "llama_cpp_host": "Host URL for Llama.cpp local server (Default: localhost:8080)",
+            "gpt4all_host": "Host URL for GPT4All local API (Default: localhost:4891)",
+            "model_mode": "Auto-selection logic: manual, auto-offline, auto-online, or auto-mixed"
         }
         
         for k, v in config_data.items():
             val = v if "api_key" not in k or not v else "****" + v[-4:]
-            desc = descriptions.get(k, "System setting")
+            desc = descriptions.get(k, "General system parameter")
             table.add_row(k, str(val), desc)
         
         console.print(table)
@@ -231,37 +251,34 @@ def config_menu():
             break
 
 def robust_help():
-    """Detailed documentation for all JARVIS systems."""
+    """Exhaustive guide for all JARVIS engineering systems."""
     help_md = """
-    # JARVIS System Documentation
+    # JARVIS Engineering Suite Documentation
     
     ### 💬 /chat [query]
-    Connects to your active LLM to provide architectural advice, code explanations, or general technical help.
+    Connects to the active model to provide advice, code explanations, or project brainstorming.
     
     ### 🔧 /fix [issue]
-    The heart of JARVIS's agentic power. It will:
-    1. **Research:** Use `SEARCH` and `READ` tools to understand your project.
-    2. **Strategy:** Formulate a step-by-step plan.
-    3. **Execute:** Apply changes with the `EDIT` tool.
-    4. **Verify:** Ensure the fix works and suggest further improvements.
+    Autonomous agent mode. JARVIS will research the issue, create a strategy, apply code changes, and verify the result.
+    
+    ### 🛠 /troubleshoot [command]
+    Warp-style Agent Mode. Runs a command, captures error output, and enters a debug loop to fix the code causing the crash.
 
     ### 🧪 /analyze-file [path]
-    A specialized audit tool. JARVIS will scan the provided file for security vulnerabilities (like SQL injection or hardcoded keys), performance bottlenecks, and style inconsistencies.
-
-    ### 🔍 /locate [name]
-    Uses low-level system commands to find files or directories anywhere on your computer or linked volumes.
-
-    ### 🛠 /troubleshoot [command]
-    Warp-inspired Agent Mode. It executes your command, captures any failures (stderr), and automatically attempts to fix the underlying code responsible for the crash.
+    Deep security and quality audit of a single file. Useful for pre-PR checks and identifying vulnerabilities.
 
     ### 🧠 /memory
-    JARVIS uses a FAISS vector database to store "long-term" insights from your conversations. This menu lets you query that database or clear it to reset JARVIS's memory.
+    Manages the FAISS vector database. This allows JARVIS to have a 'long-term' memory of your past projects and conversations.
 
     ### 🎭 /personality
-    Choose the "vibe" of your assistant. Personalities influence the tone and detail level of responses.
-    
+    Sets the behavioral persona.
+    - **Professional:** Direct and formal.
+    - **Sarcastic:** Grok-style wit and humor.
+    - **Mentor:** Patient and detailed educational responses.
+    - **Concise:** Minimalist answers only.
+
     ### 📝 /prompts
-    Your Prompt Library. Save complex system instructions or specialized "Engineer Personas" to use across different projects. Use `@name` in chat to trigger them.
+    Manage your custom role library. Add @name in your chat to apply a specific persona on the fly.
     """
     console.print(Panel(Markdown(help_md), title="[bold green]Robust Documentation[/bold green]", border_style="green"))
 
@@ -484,29 +501,12 @@ def models_menu():
         console.print("[green]Switched to Manual mode.[/green]")
         return
 
-    p_mapping = {
-        "1": "ollama", "2": "openai", "3": "gemini", "4": "claude", 
-        "5": "grok", "6": "mistral", "7": "nvidia", "8": "lm_studio", 
-        "9": "llama_cpp", "g": "gpt4all"
-    }
-    
+    p_mapping = {"1": "ollama", "2": "openai", "3": "gemini", "4": "claude", "5": "grok", "6": "mistral", "7": "nvidia", "8": "lm_studio", "9": "llama_cpp", "g": "gpt4all"}
     if choice in p_mapping:
         config["model_mode"] = "manual"
         provider = p_mapping[choice]
         config["provider"] = provider
-        
-        models = {
-            "ollama": ["llama3", "mistral", "codellama", "phi3"],
-            "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
-            "gemini": ["gemini-1.5-pro", "gemini-1.5-flash"],
-            "claude": ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"],
-            "grok": ["grok-beta"],
-            "mistral": ["mistral-large-latest", "open-mixtral-8x22b"],
-            "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"],
-            "lm_studio": ["local-model"],
-            "llama_cpp": ["local-model"],
-            "gpt4all": ["Mistral-7B-Instruct", "Llama-3-8B-Instruct"]
-        }
+        models = {"ollama": ["llama3", "mistral", "codellama", "phi3"], "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"], "gemini": ["gemini-1.5-pro", "gemini-1.5-flash"], "claude": ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"], "grok": ["grok-beta"], "mistral": ["mistral-large-latest", "open-mixtral-8x22b"], "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"], "lm_studio": ["local-model"], "llama_cpp": ["local-model"], "gpt4all": ["Mistral-7B-Instruct", "Llama-3-8B-Instruct"]}
         console.print(f"\n[bold]Common Models for {provider.upper()}:[/bold]")
         for m in models[provider]: console.print(f"- {m}")
         new_model = Prompt.ask("Enter model name", default=models[provider][0])
@@ -580,7 +580,7 @@ def free_keys():
 
 @app.command()
 def cloud(platform: str, action: str = "list", path: str = ""):
-    """Manage cloud storage (gdrive, dropbox, icloud)."""
+    """Manage cloud storage."""
     from tools.cloud import list_dropbox, list_gdrive, list_icloud
     console.print(f"[bold blue]Accessing {platform.upper()}...[/bold blue]")
     if platform == "dropbox": res = list_dropbox(path)
@@ -603,5 +603,15 @@ def init():
     else:
         with open("JARVIS.md", "w") as f: f.write("# JARVIS Project Instructions\n\n- Define rules here.")
         console.print("[green]Created JARVIS.md[/green]")
+
+def show_model_status():
+    provider_obj = get_provider()
+    p_name = get_env_with_config("provider") or "ollama"
+    model_name = provider_obj.model
+    quota = "N/A (Unlimited Local)"
+    if p_name.lower() in ["gemini"]: quota = "1,500 requests/day (Free Tier)"
+    elif p_name.lower() in ["openai", "claude", "mistral", "nvidia", "grok"]: quota = "Managed by Provider"
+    status_info = f"[bold]Provider:[/bold] {p_name.upper()}\n[bold]Model:[/bold] {model_name}\n[bold]Quota:[/bold] {quota}"
+    console.print(Panel(status_info, title="[bold magenta]Model Indicator[/bold magenta]", border_style="magenta"))
 
 if __name__ == "__main__": app()
