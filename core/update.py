@@ -53,7 +53,21 @@ def apply_update():
         return False
 
 def auto_update_check():
+    """Check for updates silently and only prompt if found."""
     latest = check_for_updates()
     if latest:
-        apply_update()
-        sys.exit(0) # Exit to allow the user to restart or wrapper to restart
+        console.print(f"[bold green]✨ A new version of JARVIS is available: {latest} (Current: {CURRENT_VERSION})[/bold green]")
+        if console.input("Would you like to upgrade now? (y/n): ").lower() == 'y':
+            if apply_update():
+                console.print("[bold green]Upgrade complete! Please restart JARVIS.[/bold green]")
+                sys.exit(0)
+
+def manual_upgrade():
+    """Manually trigger the upgrade sequence."""
+    latest = check_for_updates()
+    if not latest:
+        console.print("[green]JARVIS is already up to date.[/green]")
+        if not console.input("Force reinstall anyway? (y/n): ").lower() == 'y':
+            return
+    
+    apply_update()

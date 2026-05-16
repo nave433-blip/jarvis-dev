@@ -2,6 +2,7 @@ import os
 import sys
 import time
 from typing import Optional
+from typing_extensions import Annotated
 
 # 1. Self-Repairing Dependency Check
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -28,6 +29,7 @@ from core.brain import think, get_provider
 from core.agent import debug_loop, troubleshoot_loop
 from core.config import setup_wizard, get_env_with_config, CONFIG_FILE, load_config, save_config
 from core.ui import display_welcome, get_main_menu_table
+from core.health import check_system_health, display_health_report, auto_repair_workspace
 import core.menus as menus
 
 # Prompt Toolkit for slash commands
@@ -41,7 +43,7 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/exit"
+    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/health", "/upgrade", "/exit"
 ]
 
 @app.command()
@@ -49,6 +51,13 @@ def menu():
     """Launch the interactive Gemini-style slash command menu."""
     display_welcome()
     
+    # 1. System Health Check at Launch
+    health_results = check_system_health()
+    errors_found = display_health_report(health_results)
+    if errors_found:
+        if Confirm.ask("[bold yellow]Issues detected in workspace. Attempt auto-repair?[/bold yellow]"):
+            auto_repair_workspace(health_results)
+
     completer = WordCompleter(COMMANDS, ignore_case=True)
     session = PromptSession(completer=completer)
     style = Style.from_dict({'prompt': 'ansicyan bold'})
@@ -93,6 +102,12 @@ def menu():
             elif cmd in ["/troubleshoot", "/t"]: troubleshoot(args or Prompt.ask("Failing command"), prompt=prompt_name)
             elif cmd == "/free": free_keys()
             elif cmd in ["/help", "/h"]: menus.robust_help()
+            elif cmd == "/health":
+                health_results = check_system_health()
+                display_health_report(health_results)
+            elif cmd == "/upgrade":
+                from core.update import manual_upgrade
+                manual_upgrade()
             elif cmd in ["/exit", "/quit", "/q"]:
                 console.print("[yellow]Goodbye, Sir.[/yellow]")
                 break
@@ -124,7 +139,11 @@ def setup():
     setup_wizard()
 
 @app.command()
-def chat(q: str, model: Optional[str] = typer.Option(None, "--model", "-m"), prompt: Optional[str] = typer.Option(None, "--prompt", "-p")):
+def chat(
+    q: str, 
+    model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, 
+    prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None
+):
     """Chat with JARVIS."""
     provider = get_env_with_config("provider") or "ollama"
     console.print(Panel(f"JARVIS [bold cyan]({provider})[/bold cyan] [dim]prompt: {prompt or 'default'}[/dim]", border_style="cyan"))
@@ -132,12 +151,20 @@ def chat(q: str, model: Optional[str] = typer.Option(None, "--model", "-m"), pro
     console.print(Markdown(response))
 
 @app.command()
-def fix(issue: str, model: Optional[str] = typer.Option(None, "--model", "-m"), prompt: Optional[str] = typer.Option(None, "--prompt", "-p")):
+def fix(
+    issue: str, 
+    model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, 
+    prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None
+):
     """Autonomous debug loop."""
     debug_loop(issue, model=model, prompt=prompt)
 
 @app.command()
-def analyze_file(path: str, model: Optional[str] = typer.Option(None, "--model", "-m"), prompt: Optional[str] = typer.Option(None, "--prompt", "-p")):
+def analyze_file(
+    path: str, 
+    model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, 
+    prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None
+):
     """Deeply analyze a single file."""
     if not os.path.exists(path):
         console.print(f"[red]Error: File not found:[/red] {path}"); return
@@ -175,7 +202,11 @@ def focus(path: str):
     else: console.print(f"[red]Error: Path does not exist:[/red] {path}")
 
 @app.command()
-def troubleshoot(command: str, model: Optional[str] = typer.Option(None, "--model", "-m"), prompt: Optional[str] = typer.Option(None, "--prompt", "-p")):
+def troubleshoot(
+    command: str, 
+    model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, 
+    prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None
+):
     """Autonomous troubleshooting."""
     troubleshoot_loop(command, model=model, prompt=prompt)
 
@@ -303,5 +334,20 @@ def show_model_status():
     if p_name.lower() == "ollama": quota = "N/A (Unlimited Local)"
     status_info = f"[bold]Provider:[/bold] {p_name.upper()}\n[bold]Model:[/bold] {model_name}\n[bold]Quota:[/bold] {quota}"
     console.print(Panel(status_info, title="[bold magenta]Model Indicator[/bold magenta]", border_style="magenta"))
+
+@app.command()
+def health():
+    """System health check."""
+    results = check_system_health()
+    errors_found = display_health_report(results)
+    if errors_found:
+        if Confirm.ask("[bold yellow]Issues detected in workspace. Attempt auto-repair?[/bold yellow]"):
+            auto_repair_workspace(results)
+
+@app.command()
+def upgrade():
+    """Upgrade JARVIS to the latest version."""
+    from core.update import manual_upgrade
+    manual_upgrade()
 
 if __name__ == "__main__": app()
