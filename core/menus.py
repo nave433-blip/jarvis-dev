@@ -117,13 +117,14 @@ def personality_menu():
     config = load_config()
     current = config.get("personality", "professional")
     console.print(Panel(f"Current Personality: [bold cyan]{current.capitalize()}[/bold cyan]", title="Personality Settings"))
-    console.print("\n[1] Professional | [2] Sarcastic (Grok) | [3] Concise | [4] Mentor | [5] Nave AI (Beta) | [b] Back")
+    console.print("\n[1] Professional | [2] Sarcastic (Grok) | [3] Concise | [4] Mentor | [5] Nave-AI (Integrator) | [b] Back")
     choice = Prompt.ask("Select personality", choices=["1", "2", "3", "4", "5", "b"], default="b")
     mapping = {"1": "professional", "2": "sarcastic", "3": "concise", "4": "mentor", "5": "nave_ai"}
     if choice in mapping:
         config["personality"] = mapping[choice]
         save_config(config)
         console.print(f"[green]Personality updated to {mapping[choice].capitalize()}[/green]")
+
 
 def models_menu():
     config = load_config()

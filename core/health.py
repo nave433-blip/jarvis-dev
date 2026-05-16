@@ -9,13 +9,16 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 console = Console()
 
 REPOS = {
-    # Add other core dependent repos here if any
+    "wikiproxy": {"path": "~/wikiproxy", "check": "python3.12 -m wikiproxy --help", "repair": "python3.12 -m pip install -e ."},
 }
 
 def check_system_health():
     """Check health of JARVIS and related engineering repos."""
     results = []
     
+    if not REPOS:
+        return results
+
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -32,7 +35,6 @@ def check_system_health():
             try:
                 # Run check command
                 cmd = info["check"]
-                # Use shell=True for complex commands
                 res = subprocess.run(cmd, shell=True, cwd=path, capture_output=True, text=True)
                 
                 if res.returncode == 0:
@@ -46,6 +48,9 @@ def check_system_health():
     return results
 
 def display_health_report(results):
+    if not results:
+        return False
+
     table = Table(title="Workspace System Health", show_header=True, header_style="bold magenta")
     table.add_column("Repository", style="cyan")
     table.add_column("Status", justify="center")
@@ -84,3 +89,17 @@ def auto_repair_workspace(results):
                 console.print(f"[green]✅ {res['name']} repaired successfully![/green]")
             else:
                 console.print(f"[red]❌ Failed to repair {res['name']}. Manual intervention required.[/red]")
+
+def update_all_repos():
+    """Pull latest changes for all repos and reinstall."""
+    for name, info in REPOS.items():
+        path = os.path.expanduser(info["path"])
+        if os.path.exists(os.path.join(path, ".git")):
+            console.print(f"[bold cyan]Updating {name}...[/bold cyan]")
+            subprocess.run(["git", "pull"], cwd=path)
+        
+        repair_cmd = info.get("repair")
+        if repair_cmd:
+            console.print(f"[dim]Reinstalling {name}...[/dim]")
+            subprocess.run(repair_cmd, shell=True, cwd=path)
+    console.print("[bold green]✅ All repositories synchronized and reinstalled.[/bold green]")

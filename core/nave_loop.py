@@ -31,7 +31,7 @@ def run_nave_loop(query, cycles=2):
                 # Call brain.think with specific model
                 response = think(
                     context=f"Cycle: {i+1}\nRole: {info['role']}\nInstructions: {info['instr']}",
-                    query=current_text,
+                    task=current_text,
                     model=info['name']
                 )
                 

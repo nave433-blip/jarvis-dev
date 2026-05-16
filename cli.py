@@ -29,7 +29,7 @@ from core.brain import think, get_provider
 from core.agent import debug_loop, troubleshoot_loop
 from core.config import setup_wizard, get_env_with_config, CONFIG_FILE, load_config, save_config
 from core.ui import display_welcome, get_main_menu_table
-from core.health import check_system_health, display_health_report, auto_repair_workspace
+from core.health import check_system_health, display_health_report, auto_repair_workspace, update_all_repos
 from core.repair import auto_check_on_launch
 from core.nave_loop import run_nave_loop
 import core.menus as menus
@@ -38,6 +38,7 @@ import core.menus as menus
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from prompt_toolkit.styles import Style
+from prompt_toolkit.key_binding import KeyBindings
 
 app = typer.Typer(help="🚀 JARVIS: The Ultimate Local AI Coding Assistant")
 console = Console()
@@ -45,7 +46,7 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/health", "/upgrade", "/nave", "/exit"
+    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/health", "/upgrade", "/nave", "/sync", "/exit"
 ]
 
 @app.command()
@@ -57,7 +58,14 @@ def menu():
     auto_check_on_launch()
 
     completer = WordCompleter(COMMANDS, ignore_case=True)
-    session = PromptSession(completer=completer)
+    
+    # Add Gemini-style Escape-to-cancel binding
+    kb = KeyBindings()
+    @kb.add('escape')
+    def _(event):
+        event.app.exit(result="/exit")
+
+    session = PromptSession(completer=completer, key_bindings=kb)
     style = Style.from_dict({'prompt': 'ansicyan bold'})
     last_ctrl_c = 0
 
@@ -71,6 +79,10 @@ def menu():
             last_ctrl_c = 0 
             
             if not text: continue
+            if text == "/exit": # Handled by Escape key
+                console.print("[yellow]Goodbye, Sir.[/yellow]")
+                break
+            
             if not text.startswith("/"):
                 # Use Nave AI loop if personality is set
                 config = load_config()
@@ -121,6 +133,8 @@ def menu():
             elif cmd == "/upgrade":
                 from core.update import manual_upgrade
                 manual_upgrade()
+            elif cmd == "/sync":
+                update_all_repos()
             elif cmd in ["/exit", "/quit", "/q"]:
                 console.print("[yellow]Goodbye, Sir.[/yellow]")
                 break
