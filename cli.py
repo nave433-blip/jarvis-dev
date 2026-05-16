@@ -35,8 +35,9 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/troubleshoot", "/free", "/model", "/help", "/exit"
+    "/prompts", "/cloud", "/troubleshoot", "/free", "/model", "/help", "/exit"
 ]
+
 
 def display_welcome():
     welcome_text = """
@@ -64,6 +65,8 @@ def get_main_menu_table():
     table.add_row("/personality", "Switch between Professional, Sarcastic, Concise, or Mentor personas")
     table.add_row("/models", "Browse and switch between LLM providers (NVIDIA, OpenAI, etc.)")
     table.add_row("/model", "Show active model status, provider info, and current quota")
+    table.add_row("/prompts", "Manage system prompts library and specialized roles")
+    table.add_row("/cloud", "Search and list files on G-Drive, Dropbox, and iCloud")
     table.add_row("/focus", "Set a specific directory or file as the primary work context")
     table.add_row("/help", "Open robust system documentation and command guide")
     table.add_row("/exit", "Securely shutdown and exit the JARVIS interface")
@@ -136,6 +139,10 @@ def menu():
                 personality_menu()
             elif cmd == "/models":
                 models_menu()
+            elif cmd == "/prompts":
+                prompts_menu()
+            elif cmd == "/cloud":
+                cloud_menu()
             elif cmd == "/model":
                 show_model_status()
             elif cmd == "/focus":
@@ -570,6 +577,24 @@ def free_keys():
     4. **Ollama:** [https://ollama.com/](https://ollama.com/)
     """
     console.print(Panel(Markdown(info), title="Free Tier Automation"))
+
+@app.command()
+def cloud(platform: str, action: str = "list", path: str = ""):
+    """Manage cloud storage (gdrive, dropbox, icloud)."""
+    from tools.cloud import list_dropbox, list_gdrive, list_icloud
+    console.print(f"[bold blue]Accessing {platform.upper()}...[/bold blue]")
+    if platform == "dropbox": res = list_dropbox(path)
+    elif platform == "gdrive": res = list_gdrive()
+    elif platform == "icloud": res = list_icloud(path)
+    else: res = "Unknown platform."
+    console.print(Panel(str(res), title=f"Cloud Result: {platform}"))
+
+def cloud_menu():
+    console.print(Panel("Select Cloud Platform:\n[1] Google Drive | [2] Dropbox | [3] iCloud Drive | [b] Back", title="Cloud Integration"))
+    choice = Prompt.ask("Choice", choices=["1", "2", "3", "b"], default="b")
+    if choice == "1": cloud("gdrive")
+    elif choice == "2": cloud("dropbox")
+    elif choice == "3": cloud("icloud")
 
 @app.command()
 def init():

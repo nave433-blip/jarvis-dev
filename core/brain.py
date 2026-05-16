@@ -249,6 +249,7 @@ Available Tools:
 - INSTALLER: brew(package), git(repo, dest), or curl(url, output)
 - GITHUB: action(info, issue, list_prs, create_pr), repo, title, body, head, base
 - ANALYTICS: action(file, summary), path
+- CLOUD: platform(dropbox, gdrive, icloud), action(list), path/query
 
 System Rules:
 {project_rules}

@@ -27,7 +27,10 @@ dependencies = [
     "sentence-transformers",
     "faiss-cpu",
     "SpeechRecognition",
-    "prompt_toolkit"
+    "prompt_toolkit",
+    "dropbox",
+    "google-api-python-client",
+    "google-auth-oauthlib"
 ]
 
 [project.optional-dependencies]

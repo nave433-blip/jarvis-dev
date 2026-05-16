@@ -18,7 +18,10 @@ PYTHON_DEPS = {
     "faiss-cpu": "faiss",
     "SpeechRecognition": "speech_recognition",
     "prompt_toolkit": "prompt_toolkit",
-    "Pillow": "PIL"
+    "Pillow": "PIL",
+    "dropbox": "dropbox",
+    "google-api-python-client": "googleapiclient",
+    "google-auth-oauthlib": "google_auth_oauthlib"
 }
 
 def check_python_deps():

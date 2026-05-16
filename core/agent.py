@@ -6,6 +6,7 @@ from tools.editor import replace_in_file, read_section
 from tools.installer import brew_install, git_install, curl_install
 from tools.github import github_tool
 from tools.analytics import analyze_complexity, project_summary
+from tools.cloud import list_dropbox, list_gdrive, list_icloud
 from rich.console import Console
 from rich.panel import Panel
 
@@ -46,6 +47,12 @@ def dispatch_tool(line, next_line):
             action = args.get("action", "summary")
             if action == "file": return analyze_complexity(args["path"])
             return project_summary(args.get("path", "."))
+        elif tool_name == "CLOUD":
+            platform = args.get("platform")
+            action = args.get("action", "list")
+            if platform == "dropbox": return list_dropbox(args.get("path", ""))
+            if platform == "gdrive": return list_gdrive(args.get("query", "'root' in parents"))
+            if platform == "icloud": return list_icloud(args.get("path", ""))
             
     except Exception as e:
         return f"Tool Error: {e}"
@@ -88,7 +95,7 @@ def troubleshoot_loop(command, model=None, prompt=None):
     result = run(command)
     
     if result.get("return_code") == 0:
-        console.print("[green]Command succeeded on first try. No troubleshooting needed.[/green]")
+        console_local.print("[green]Command succeeded on first try. No troubleshooting needed.[/green]")
         return
     
     error_context = f"""

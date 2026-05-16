@@ -22,6 +22,8 @@ DEFAULT_CONFIG = {
     "openai_api_key": "",
     "mistral_api_key": "",
     "nvidia_api_key": "",
+    "dropbox_token": "",
+    "gdrive_token": "",
     "github_token": "",
     "personality": "professional",
     "active_prompt": "default",
