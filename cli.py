@@ -173,6 +173,9 @@ def menu():
             elif cmd == "/free": free_keys()
             elif cmd == "/doctor": run_doctor()
             elif cmd == "/git": ai_git(args or Prompt.ask("Git task?"))
+            elif cmd == "/nave":
+                q = args or Prompt.ask("Technical idea to refine?")
+                res = run_nave_loop(q); console.print(Markdown(res))
             elif cmd == "/search":
                 q = args or Prompt.ask("Search term")
                 results = session.history.get_strings()
@@ -332,6 +335,14 @@ def run_doctor():
 @app.command()
 def ai_git(task: str):
     res = think("", f"Git task: {task}"); console.print(Markdown(res))
+
+@app.command()
+def nave(q: str):
+    """Refine a technical problem or idea using the multi-model Nave AI Redundancy Loop."""
+    from core.nave_loop import run_nave_loop
+    console.print(Panel(f"🚀 [bold cyan]Nave AI Redundancy Loop[/bold cyan]\nRefining: [dim]{q}[/dim]", border_style="cyan"))
+    result = run_nave_loop(q)
+    console.print(Markdown(result))
 
 @app.command()
 def init():
