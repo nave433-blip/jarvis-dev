@@ -1,3 +1,12 @@
+import os
+import sys
+
+# 1. Self-Repairing Dependency Check (Run before other imports)
+# Add current dir to path to ensure core.deps can be found
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from core.deps import ensure_all
+ensure_all()
+
 import typer
 from core.brain import think, get_provider
 from core.agent import debug_loop, troubleshoot_loop
