@@ -82,7 +82,7 @@ def menu():
     
     core_table = Table(title="[bold magenta]Core AI Agents[/bold magenta]", show_header=True, header_style="bold magenta", border_style="magenta")
     core_table.add_column("Command", style="white"); core_table.add_column("Function", style="dim")
-    core_table.add_row("/fix", "Autonomous repair & debugging"); core_table.add_row("/forge", "Hardcore code synthesis & creation"); core_table.add_row("/plan", "Strategic engineering roadmaps"); core_table.add_row("/nave", "Multi-model reasoning & refinement"); core_table.add_row("/chat", "Direct technical consultation")
+    core_table.add_row("/fix", "Autonomous repair & debugging"); core_table.add_row("/forge", "Hardcore code synthesis & creation"); core_table.add_row("/plan", "Strategic engineering roadmaps"); core_table.add_row("/nave", "Multi-model reasoning & refinement"); core_table.add_row("/copilot", "GitHub Copilot technical advice"); core_table.add_row("/chat", "Direct technical consultation")
 
     dev_table = Table(title="[bold green]DevOps & Utilities[/bold green]", show_header=True, header_style="bold green", border_style="green")
     dev_table.add_column("Command", style="white"); dev_table.add_column("Function", style="dim")
@@ -342,6 +342,16 @@ def run_doctor():
 @app.command()
 def ai_git(task: str):
     console.print(Markdown(think("", f"Git task: {task}")))
+
+@app.command()
+def copilot(query: str, action: Annotated[str, typer.Option("--action", "-a")] = "suggest"):
+    """Get technical suggestions or command explanations from GitHub Copilot CLI."""
+    from tools.copilot import copilot_suggest, copilot_explain
+    if action == "suggest":
+        res = copilot_suggest(query)
+    else:
+        res = copilot_explain(query)
+    console.print(Panel(res, title=f"GitHub Copilot ({action.capitalize()})", border_style="cyan"))
 
 @app.command()
 def init():

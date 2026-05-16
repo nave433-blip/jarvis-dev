@@ -86,6 +86,10 @@ def dispatch_tool(line, next_line):
             if action == "kill": return kill_process(args["pid"])
         elif tool_name == "LAUNCHER":
             return launch_tool(args.get("tool"))
+        elif tool_name == "COPILOT":
+            action = args.get("action", "suggest")
+            if action == "suggest": return copilot_suggest(args.get("query"))
+            if action == "explain": return copilot_explain(args.get("command"))
         elif tool_name == "HARDWARE":
             action = args.get("action", "usb")
             if action == "usb": return list_usb_devices()
