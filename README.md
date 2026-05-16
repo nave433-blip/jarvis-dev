@@ -13,40 +13,30 @@ JARVIS is a senior software engineering assistant that runs locally on macOS, po
 
 ## Installation
 
-### Method 1: Curl Install (One-liner)
+### 🚀 Quick Install (Global)
+Install JARVIS globally and launch it from anywhere by simply typing `jarvis`:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nave433-blip/jarvis-dev/main/install.sh | bash
 ```
 
-### Method 2: Homebrew
-```bash
-brew install nave433-blip/tap/jarvis
-```
-
-### Method 3: Git (Developer Install)
-1. **Requirements:**
-   - Python 3.9+
-   - [Ollama](https://ollama.com/) (running `llama3`)
-   - PortAudio (for voice: `brew install portaudio`)
-
+### 📦 Manual Install
+1. **Requirements:** Python 3.9+, [Ollama](https://ollama.com/), PortAudio (`brew install portaudio`).
 2. **Setup:**
    ```bash
    git clone https://github.com/nave433-blip/jarvis-dev.git
    cd jarvis-dev
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -e .
+   make install
    ```
 
 ## Usage
 
-Run Jarvis from anywhere (if aliased):
+Once installed, just type `jarvis` to open the interactive menu or use specific commands:
 
 ```bash
-jarvis chat "Explain the current project structure"
-jarvis fix "Fix the bug in memory/vector.py"
-jarvis voice
-jarvis watch
+jarvis chat "How do I use vector memory?"
+jarvis fix "The bug in memory/vector.py"
+jarvis setup  # Reconfigure LLM providers/keys
 ```
 
 ## Project Rules

@@ -1,5 +1,8 @@
+install:
+	bash install.sh
+
 run:
-	./venv/bin/jarvis chat "Hello"
+	jarvis chat "Hello"
 
 fix:
 	./venv/bin/jarvis fix "bug in project"
