@@ -39,6 +39,7 @@ def get_main_menu_table():
     table.add_row("[8] Undo", "Rollback the last file edit")
     table.add_row("[9] Dashboard", "Multi-window live dashboard")
     table.add_row("[m] Memory", "Manage and clear vector memory")
+    table.add_row("[p] Personality", "Switch between Professional, Sarcastic, etc.")
     table.add_row("[f] Focus", "Set the working context for JARVIS")
     table.add_row("[t] Troubleshoot", "Run a command and automatically fix any errors")
     table.add_row("[h] Help", "Robust command documentation")
@@ -52,7 +53,7 @@ def menu():
     display_welcome()
     while True:
         console.print(Align.center(get_main_menu_table()))
-        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "m", "f", "t", "h", "q"], default="1")
+        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "m", "p", "f", "t", "h", "q"], default="1")
         
         if choice == "1":
             q = Prompt.ask("What is your question?")
@@ -77,6 +78,8 @@ def menu():
             dashboard()
         elif choice == "m":
             memory_menu()
+        elif choice == "p":
+            personality_menu()
         elif choice == "f":
             path = Prompt.ask("Enter path to focus on", default=".")
             focus(path)
@@ -141,6 +144,13 @@ def robust_help():
     ### 🧠 Memory
     Manage your vector memory. View how many insights JARVIS has stored, search through them, 
     or wipe the slate clean if you want to start fresh.
+
+    ### 🎭 Personality
+    Switch JARVIS's behavioral profile. Choose from:
+    - **Professional:** Standard senior engineer.
+    - **Sarcastic:** Witty and edgy (Grok-style).
+    - **Concise:** Minimalist and direct.
+    - **Mentor:** Patient and educational.
 
     ### 🛠 Troubleshoot
     Inspired by Warp's Agent Mode. Provide a command that is failing; JARVIS will run it, 
@@ -306,6 +316,34 @@ def memory_menu():
             memory(action="clear")
         else:
             break
+
+def personality_menu():
+    from core.config import load_config, save_config
+    config = load_config()
+    current = config.get("personality", "professional")
+    
+    console.print(Panel(f"Current Personality: [bold cyan]{current.capitalize()}[/bold cyan]", title="Personality Settings"))
+    console.print("\n[1] Professional | [2] Sarcastic (Grok) | [3] Concise | [4] Mentor | [b] Back")
+    
+    choice = Prompt.ask("Select personality", choices=["1", "2", "3", "4", "b"], default="b")
+    
+    mapping = {"1": "professional", "2": "sarcastic", "3": "concise", "4": "mentor"}
+    if choice in mapping:
+        config["personality"] = mapping[choice]
+        save_config(config)
+        console.print(f"[green]Personality updated to {mapping[choice].capitalize()}[/green]")
+
+@app.command()
+def personality(type: str):
+    """Set JARVIS's personality (professional, sarcastic, concise, mentor)."""
+    from core.config import load_config, save_config
+    config = load_config()
+    if type in ["professional", "sarcastic", "concise", "mentor"]:
+        config["personality"] = type
+        save_config(config)
+        console.print(f"[green]Personality set to {type.capitalize()}[/green]")
+    else:
+        console.print("[red]Invalid personality type.[/red]")
 
 @app.command()
 def init():

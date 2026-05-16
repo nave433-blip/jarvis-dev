@@ -110,16 +110,27 @@ def get_project_instructions():
             return f.read()
     return ""
 
+PERSONALITIES = {
+    "professional": "You are a professional senior software engineer. Be precise, accurate, and helpful.",
+    "sarcastic": "You are a witty, sarcastic, and slightly rebellious AI assistant (Grok-style). Use humor, be edgy, but still solve the technical problem.",
+    "concise": "You are a minimalist assistant. Provide the shortest possible correct answer. No fluff.",
+    "mentor": "You are a patient engineering mentor. Explain the 'why' behind your solutions and encourage best practices."
+}
+
 def think(context, task, model=None):
     provider = get_provider(model_override=model)
     relevant_memories = search(task, k=3)
     memory_context = "\n".join([f"- {m}" for m in relevant_memories])
     project_rules = get_project_instructions()
 
+    personality_type = get_env_with_config("personality") or "professional"
+    personality_prompt = PERSONALITIES.get(personality_type, PERSONALITIES["professional"])
+
     prompt = f"""
-You are JARVIS, a senior software engineering assistant.
+{personality_prompt}
 
 Core workflow: Research -> Strategy -> Execution.
+...
 
 Available Tools:
 - SEARCH: grep(pattern) or glob(pattern)

@@ -16,7 +16,8 @@ DEFAULT_CONFIG = {
     "gemini_api_key": "",
     "anthropic_api_key": "",
     "xai_api_key": "",
-    "github_token": ""
+    "github_token": "",
+    "personality": "professional"
 }
 
 def load_config():
