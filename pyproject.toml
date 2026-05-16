@@ -16,6 +16,24 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: MacOS",
 ]
+dependencies = [
+    "typer",
+    "rich",
+    "requests",
+    "watchdog",
+    "sounddevice",
+    "scipy",
+    "numpy",
+    "sentence-transformers",
+    "faiss-cpu",
+    "SpeechRecognition"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black"
+]
 
 [project.urls]
 Homepage = "https://github.com/yourusername/jarvis-dev"
@@ -23,7 +41,10 @@ Homepage = "https://github.com/yourusername/jarvis-dev"
 [project.scripts]
 jarvis = "cli:app"
 
+[tool.setuptools]
+py-modules = ["cli"]
+
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["core", "tools", "watcher", "voice", "memory", "rust-core"]
+include = ["core", "tools", "watcher", "voice", "memory"]
 

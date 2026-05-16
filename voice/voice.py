@@ -1,7 +1,7 @@
 import sounddevice as sd
 import scipy.io.wavfile as wav
 import speech_recognition as sr
-from core.brain import think
+from core.agent import debug_loop
 import os
 
 def record():
@@ -22,7 +22,10 @@ def run_voice():
             print("Transcribing...")
             cmd = recognizer.recognize_google(audio_data)
             print(f"JARVIS heard: {cmd}")
-            print("\nJARVIS:\n", think("", cmd))
+            
+            # Use the debug_loop to allow tool execution
+            debug_loop(cmd)
+            
     except sr.UnknownValueError:
         print("JARVIS could not understand the audio.")
     except sr.RequestError as e:

@@ -1,0 +1,14 @@
+typer
+rich
+requests
+watchdog
+sounddevice
+scipy
+numpy
+sentence-transformers
+faiss-cpu
+SpeechRecognition
+
+[dev]
+pytest
+black

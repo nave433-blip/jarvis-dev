@@ -5,4 +5,3 @@ recursive-include tools *
 recursive-include watcher *
 recursive-include voice *
 recursive-include memory *
-recursive-include rust-core *

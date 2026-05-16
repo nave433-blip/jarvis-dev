@@ -1,7 +1,7 @@
 MANIFEST.in
 README.md
+cli.py
 pyproject.toml
-setup.cfg
 core/agent.py
 core/brain.py
 core/__pycache__/agent.cpython-312.pyc
@@ -10,6 +10,7 @@ jarvis_dev.egg-info/PKG-INFO
 jarvis_dev.egg-info/SOURCES.txt
 jarvis_dev.egg-info/dependency_links.txt
 jarvis_dev.egg-info/entry_points.txt
+jarvis_dev.egg-info/requires.txt
 jarvis_dev.egg-info/top_level.txt
 memory/vector.py
 memory/__pycache__/vector.cpython-312.pyc

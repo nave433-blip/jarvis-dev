@@ -4,8 +4,9 @@ import os
 import pickle
 import requests
 
-OLLAMA_EMBED_URL = "http://localhost:11434/api/embeddings"
-MODEL = "llama3" # Or "nomic-embed-text" for better results
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_EMBED_URL = f"{OLLAMA_HOST}/api/embeddings"
+MODEL = os.getenv("JARVIS_MODEL", "llama3") # Or "nomic-embed-text" for better results
 _index = None
 _store = []
 DB_PATH = "memory_store.pkl"

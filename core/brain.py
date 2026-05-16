@@ -2,7 +2,9 @@ import requests
 import os
 from memory.vector import add, search
 
-OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_URL = f"{OLLAMA_HOST}/api/generate"
+MODEL = os.getenv("JARVIS_MODEL", "llama3")
 
 def get_project_instructions():
     if os.path.exists("JARVIS.md"):
@@ -13,14 +15,14 @@ def get_project_instructions():
 def ask(prompt):
     try:
         r = requests.post(OLLAMA_URL, json={
-            "model": "llama3",
+            "model": MODEL,
             "prompt": prompt,
             "stream": False
         })
         r.raise_for_status()
         return r.json()["response"]
     except Exception as e:
-        return f"Error connecting to Ollama: {e}"
+        return f"Error connecting to Ollama at {OLLAMA_URL}: {e}"
 
 def think(context, task):
     relevant_memories = search(task, k=3)

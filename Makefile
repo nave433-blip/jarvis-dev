@@ -1,12 +1,11 @@
 run:
-	cd rust-core && cargo build --release
-	cd ..
+	./venv/bin/jarvis chat "Hello"
 
 fix:
-	python cli.py fix "bug in project"
+	./venv/bin/jarvis fix "bug in project"
 
 voice:
-	python cli.py voice
+	./venv/bin/jarvis voice
 
-rust:
-	cd rust-core && cargo build --release && cd ..
+watch:
+	./venv/bin/jarvis watch
