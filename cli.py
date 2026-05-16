@@ -14,13 +14,26 @@ from rich.layout import Layout
 from rich.prompt import Prompt
 from rich.align import Align
 
+# Prompt Toolkit for slash commands
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import WordCompleter
+from prompt_toolkit.styles import Style
+
 app = typer.Typer(help="🚀 JARVIS: The Ultimate Local AI Coding Assistant")
 console = Console()
+
+COMMANDS = [
+    "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", 
+    "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
+    "/troubleshoot", "/help", "/exit"
+]
 
 def display_welcome():
     welcome_text = """
     # JARVIS v1.0
     The Senior Software Engineering Assistant
+    
+    *Type [bold cyan]/[/bold cyan] to see available commands.*
     """
     console.print(Panel(Markdown(welcome_text), style="bold blue", border_style="cyan"))
 
@@ -29,70 +42,90 @@ def get_main_menu_table():
     table.add_column("Command", style="cyan", justify="right")
     table.add_column("Description", style="white")
     
-    table.add_row("[1] Chat", "Ask JARVIS anything about your code")
-    table.add_row("[2] Fix", "Autonomous debugging and repair loop")
-    table.add_row("[3] Voice", "Control JARVIS with voice commands")
-    table.add_row("[4] Watch", "Proactive background file monitoring")
-    table.add_row("[5] Config", "View and edit settings")
-    table.add_row("[6] Init", "Setup JARVIS.md for the current project")
-    table.add_row("[7] Analyze", "Deep project complexity and health analytics")
-    table.add_row("[8] Undo", "Rollback the last file edit")
-    table.add_row("[9] Dashboard", "Multi-window live dashboard")
-    table.add_row("[m] Memory", "Manage and clear vector memory")
-    table.add_row("[p] Personality", "Switch between Professional, Sarcastic, etc.")
-    table.add_row("[o] Models", "Select and configure LLM providers (Nvidia, OpenAI, etc.)")
-    table.add_row("[f] Focus", "Set the working context for JARVIS")
-    table.add_row("[t] Troubleshoot", "Run a command and automatically fix any errors")
-    table.add_row("[h] Help", "Robust command documentation")
-    table.add_row("[q] Quit", "Exit the JARVIS CLI")
+    table.add_row("/chat", "Ask JARVIS anything")
+    table.add_row("/fix", "Autonomous debugging loop")
+    table.add_row("/voice", "Voice control")
+    table.add_row("/watch", "Proactive monitoring")
+    table.add_row("/config", "Settings")
+    table.add_row("/analyze", "Project analytics")
+    table.add_row("/undo", "Rollback last edit")
+    table.add_row("/dashboard", "Live multi-window TUI")
+    table.add_row("/memory", "Manage vector memory")
+    table.add_row("/personality", "Switch behavior profiles")
+    table.add_row("/models", "Switch AI models")
+    table.add_row("/focus", "Set context path")
+    table.add_row("/troubleshoot", "Auto-fix terminal errors")
+    table.add_row("/help", "Show documentation")
+    table.add_row("/exit", "Quit JARVIS")
     
-    return Panel(table, title="[bold white]Main Menu[/bold white]", border_style="blue", expand=False)
+    return Panel(table, title="[bold white]Slash Commands[/bold white]", border_style="blue", expand=False)
 
 @app.command()
 def menu():
-    """Launch the interactive graphical CLI menu."""
+    """Launch the interactive Gemini-style slash command menu."""
     display_welcome()
+    
+    completer = WordCompleter(COMMANDS, ignore_case=True)
+    session = PromptSession(completer=completer)
+    
+    style = Style.from_dict({
+        'prompt': 'ansicyan bold',
+    })
+
     while True:
-        console.print(Align.center(get_main_menu_table()))
-        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "m", "p", "o", "f", "t", "h", "q"], default="1")
-        
-        if choice == "1":
-            q = Prompt.ask("What is your question?")
-            chat(q)
-        elif choice == "2":
-            issue = Prompt.ask("Describe the issue to fix")
-            fix(issue)
-        elif choice == "3":
-            voice()
-        elif choice == "4":
-            watch()
-        elif choice == "5":
-            config_menu()
-        elif choice == "6":
-            init()
-        elif choice == "7":
-            analyze()
-        elif choice == "8":
-            path = Prompt.ask("Path to file to undo")
-            undo(path)
-        elif choice == "9":
-            dashboard()
-        elif choice == "m":
-            memory_menu()
-        elif choice == "p":
-            personality_menu()
-        elif choice == "o":
-            models_menu()
-        elif choice == "f":
-            path = Prompt.ask("Enter path to focus on", default=".")
-            focus(path)
-        elif choice == "t":
-            cmd = Prompt.ask("Enter the command that is failing")
-            troubleshoot(cmd)
-        elif choice == "h":
-            robust_help()
-        elif choice == "q":
-            console.print("[yellow]Goodbye, Sir.[/yellow]")
+        try:
+            text = session.prompt('JARVIS > ', style=style).strip()
+            if not text: continue
+            
+            if not text.startswith("/"):
+                # Default to chat if no slash
+                chat(text)
+                continue
+
+            parts = text.split(" ", 1)
+            cmd = parts[0].lower()
+            args = parts[1] if len(parts) > 1 else ""
+
+            if cmd == "/chat":
+                chat(args or Prompt.ask("Question"))
+            elif cmd == "/fix":
+                fix(args or Prompt.ask("Issue to fix"))
+            elif cmd in ["/voice", "/v"]:
+                voice()
+            elif cmd in ["/watch", "/w"]:
+                watch()
+            elif cmd == "/config":
+                config_menu()
+            elif cmd == "/init":
+                init()
+            elif cmd == "/analyze":
+                analyze(args or ".")
+            elif cmd == "/undo":
+                undo(args or Prompt.ask("Path to undo"))
+            elif cmd == "/dashboard":
+                dashboard()
+            elif cmd == "/memory":
+                memory_menu()
+            elif cmd == "/personality":
+                personality_menu()
+            elif cmd == "/models":
+                models_menu()
+            elif cmd == "/focus":
+                focus(args or Prompt.ask("Path to focus on"))
+            elif cmd in ["/troubleshoot", "/t"]:
+                troubleshoot(args or Prompt.ask("Failing command"))
+            elif cmd in ["/help", "/h"]:
+                robust_help()
+                console.print(Align.center(get_main_menu_table()))
+            elif cmd in ["/exit", "/quit", "/q"]:
+                console.print("[yellow]Goodbye, Sir.[/yellow]")
+                break
+            else:
+                console.print(f"[red]Unknown command: {cmd}. Type /help for options.[/red]")
+
+        except KeyboardInterrupt:
+            continue
+        except EOFError:
             break
 
 def config_menu():
@@ -118,54 +151,34 @@ def robust_help():
     help_md = """
     # JARVIS Robust Help System
     
-    ### 💬 Chat
-    Uses the configured LLM (Ollama, Gemini, Claude, or Grok) to answer technical questions. 
-    It has access to your project context if `SEARCH` and `READ` tools are invoked by the brain.
+    ### 💬 /chat
+    Uses the configured LLM to answer technical questions.
     
-    ### 🔧 Fix
-    An autonomous agent loop. JARVIS will:
-    1. Research the issue using search tools.
-    2. Propose a strategy.
-    3. Execute changes using the `EDIT` tool.
-    4. Validate and repeat until resolved.
-
-    **Note:** You can use `[a] Allow for session` during an edit confirmation to permit JARVIS to apply all subsequent changes without asking again.
+    ### 🔧 /fix
+    Autonomous agent loop to repair bugs.
     
-    ### 🎙 Voice
-    Hands-free control. JARVIS transcribes your speech and pipes it directly into the `Fix` or `Chat` engine.
+    ### 🎙 /voice
+    Hands-free control via speech.
     
-    ### 👁 Watch
-    Monitors `.py` files in real-time. When a file is saved, JARVIS automatically analyzes the changes 
-    and stores the insights in its vector memory for future context.
+    ### 👁 /watch
+    Real-time file monitoring.
 
-    ### 🖥 Dashboard
-    A live, multi-window TUI (Terminal User Interface) that displays your recent chat history, 
-    system logs, project statistics, and the current focus context in a single layout.
+    ### 🖥 /dashboard
+    Live multi-window TUI.
 
-    ### 🎯 Focus
-    Narrow JARVIS's scope to a specific file or directory. This ensures the agent prioritizes 
-    the relevant context when performing analytics or debugging.
+    ### 🎯 /focus
+    Narrow context to a specific path.
 
-    ### 🧠 Memory
-    Manage your vector memory. View how many insights JARVIS has stored, search through them, 
-    or wipe the slate clean if you want to start fresh.
+    ### 🧠 /memory
+    Search or clear persistent history.
 
-    ### 🎭 Personality
-    Switch JARVIS's behavioral profile. Choose from:
-    - **Professional:** Standard senior engineer.
-    - **Sarcastic:** Witty and edgy (Grok-style).
-    - **Concise:** Minimalist and direct.
-    - **Mentor:** Patient and educational.
+    ### 🎭 /personality
+    Switch between Professional, Sarcastic, etc.
 
-    ### 🛠 Troubleshoot
-    Inspired by Warp's Agent Mode. Provide a command that is failing; JARVIS will run it, 
-    capture the error, and automatically enter a debug loop to fix the root cause.
-    
-    ### ⚙️ Config
-    Manage your LLM providers and API keys. Supports local Ollama and cloud-based giants.
+    ### ⚙️ /config
+    Manage LLM providers and API keys.
     """
     console.print(Panel(Markdown(help_md), title="[bold green]System Documentation[/bold green]", border_style="green"))
-    input("\nPress Enter to return to menu...")
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
@@ -217,7 +230,6 @@ def dashboard():
 def focus(path: str):
     """Set the working directory/file focus for JARVIS."""
     if os.path.exists(path):
-        # Persistent focus could be added to config later
         console.print(Panel(f"[green]Focus successfully set to:[/green]\n{os.path.abspath(path)}", border_style="green"))
     else:
         console.print(f"[red]Error: Path does not exist:[/red] {path}")
@@ -267,12 +279,10 @@ def analyze(path: str = "."):
             console.print(f"- {hs['path']} (Score: {hs['score']})")
     else:
         console.print("\n[green]No complexity hotspots detected. Great job![/green]")
-    
-    input("\nPress Enter to return...")
 
 @app.command()
 def github(action: str, repo: str, title: str = "", body: str = "", head: str = "", base: str = "main"):
-    """Perform GitHub actions (info, issue, create_pr, list_prs)."""
+    """Perform GitHub actions."""
     from tools.github import github_tool
     if action == "info":
         res = github_tool.get_repo_info(repo)
@@ -289,7 +299,7 @@ def github(action: str, repo: str, title: str = "", body: str = "", head: str = 
 
 @app.command()
 def memory(action: str = "stats", q: str = ""):
-    """Manage JARVIS's vector memory (stats, search, clear)."""
+    """Manage vector memory."""
     from memory.vector import get_stats, search, clear
     if action == "stats":
         stats = get_stats()
@@ -340,7 +350,7 @@ def personality_menu():
 
 @app.command()
 def personality(type: str):
-    """Set JARVIS's personality (professional, sarcastic, concise, mentor)."""
+    """Set behavior profile."""
     from core.config import load_config, save_config
     config = load_config()
     if type in ["professional", "sarcastic", "concise", "mentor"]:
@@ -371,7 +381,6 @@ def models_menu():
         provider = p_mapping[choice]
         config["provider"] = provider
         
-        # Quick model suggestions
         models = {
             "ollama": ["llama3", "mistral", "codellama", "phi3"],
             "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
@@ -388,17 +397,14 @@ def models_menu():
         
         new_model = Prompt.ask("Enter model name", default=models[provider][0])
         config["jarvis_model"] = new_model
-        
-        # If it's gemini, also set gemini_model
         if provider == "gemini":
             config["gemini_model"] = new_model
-            
         save_config(config)
         console.print(f"[green]Switched to {provider.upper()} ({new_model})[/green]")
 
 @app.command()
 def models(provider: str, model: str):
-    """Directly set the LLM provider and model."""
+    """Directly set LLM."""
     from core.config import load_config, save_config
     config = load_config()
     config["provider"] = provider.lower()
