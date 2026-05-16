@@ -3,6 +3,15 @@ import os
 import json
 from memory.vector import add, search
 from core.config import get_env_with_config
+from core.prompts import load_prompts
+
+def is_connected():
+    """Check if the user is online."""
+    try:
+        requests.get("https://8.8.8.8", timeout=1)
+        return True
+    except:
+        return False
 
 class LLMProvider:
     def __init__(self, model=None):
@@ -22,7 +31,7 @@ class OllamaProvider(LLMProvider):
                 "model": self.model,
                 "prompt": prompt,
                 "stream": False
-            })
+            }, timeout=30)
             r.raise_for_status()
             return r.json()["response"]
         except Exception as e:
@@ -45,7 +54,7 @@ class OpenAICompatibleProvider(LLMProvider):
                 "model": self.model,
                 "messages": [{"role": "user", "content": prompt}]
             }
-            r = requests.post(self.url, headers=headers, json=data)
+            r = requests.post(self.url, headers=headers, json=data, timeout=60)
             r.raise_for_status()
             return r.json()["choices"][0]["message"]["content"]
         except Exception as e:
@@ -62,7 +71,7 @@ class GeminiProvider(LLMProvider):
         try:
             headers = {'Content-Type': 'application/json'}
             data = {"contents": [{"parts": [{"text": prompt}]}]}
-            r = requests.post(url, headers=headers, json=data)
+            r = requests.post(url, headers=headers, json=data, timeout=60)
             r.raise_for_status()
             return r.json()['candidates'][0]['content']['parts'][0]['text']
         except Exception as e:
@@ -86,19 +95,74 @@ class ClaudeProvider(LLMProvider):
                 "max_tokens": 4096,
                 "messages": [{"role": "user", "content": prompt}]
             }
-            r = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=data)
+            r = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=data, timeout=60)
             r.raise_for_status()
             return r.json()["content"][0]["text"]
         except Exception as e:
             return f"Claude Error: {e}"
 
+def get_best_offline():
+    """Auto-detect and return the best available offline provider."""
+    # Check Ollama
+    try:
+        host = get_env_with_config("ollama_host") or "http://localhost:11434"
+        requests.get(f"{host}/api/tags", timeout=0.5)
+        return OllamaProvider()
+    except: pass
+    
+    # Check LM Studio
+    try:
+        host = get_env_with_config("lm_studio_host") or "http://localhost:1234"
+        requests.get(f"{host}/v1/models", timeout=0.5)
+        return OpenAICompatibleProvider(api_key="lm-studio", url=f"{host}/v1/chat/completions", model="local-model")
+    except: pass
+    
+    # Fallback to Ollama even if it fails (standard default)
+    return OllamaProvider()
+
+def get_best_online():
+    """Auto-detect and return the best available online provider."""
+    # Prioritize Gemini Free Tier
+    if get_env_with_config("gemini_api_key"):
+        return GeminiProvider(model="gemini-1.5-flash")
+    # Then OpenAI
+    if get_env_with_config("openai_api_key"):
+        return OpenAICompatibleProvider(
+            api_key=get_env_with_config("openai_api_key"),
+            url="https://api.openai.com/v1/chat/completions",
+            model="gpt-4o-mini"
+        )
+    # Then Grok
+    if get_env_with_config("xai_api_key"):
+        return OpenAICompatibleProvider(
+            api_key=get_env_with_config("xai_api_key"),
+            url="https://api.x.ai/v1/chat/completions",
+            model="grok-beta"
+        )
+    return None
+
 def get_provider(model_override=None):
+    mode = get_env_with_config("model_mode") or "manual"
     p = get_env_with_config("provider") or "ollama"
     p = p.lower()
     
+    # Mode-based routing
+    if mode == "auto-offline":
+        return get_best_offline()
+    
+    if mode == "auto-online":
+        online = get_best_online()
+        return online if online else get_best_offline()
+    
+    if mode == "auto-mixed":
+        if is_connected():
+            online = get_best_online()
+            if online: return online
+        return get_best_offline()
+
+    # Manual Selection (Legacy logic)
     if p == "gemini": return GeminiProvider(model=model_override)
     if p == "claude": return ClaudeProvider(model=model_override)
-    
     if p == "openai":
         return OpenAICompatibleProvider(
             api_key=get_env_with_config("openai_api_key"),
@@ -123,34 +187,24 @@ def get_provider(model_override=None):
             url="https://integrate.api.nvidia.com/v1/chat/completions",
             model=model_override or "nvidia/llama-3.1-405b-instruct"
         )
-    
     if p == "lm_studio":
         return OpenAICompatibleProvider(
-            api_key="lm-studio", # Usually not required
+            api_key="lm-studio",
             url=f"{get_env_with_config('lm_studio_host')}/v1/chat/completions",
             model=model_override or "local-model"
         )
-
     if p == "llama_cpp":
         return OpenAICompatibleProvider(
             api_key="sk-no-key-required",
             url=f"{get_env_with_config('llama_cpp_host')}/v1/chat/completions",
             model=model_override or "local-model"
         )
-    
     if p == "gpt4all":
         return OpenAICompatibleProvider(
             api_key="not-needed",
             url=f"{get_env_with_config('gpt4all_host')}/v1/chat/completions",
             model=model_override or "local-model"
         )
-        
-    if p == "free":
-        # Auto-select the best available free tier
-        gemini_key = get_env_with_config("gemini_api_key")
-        if gemini_key:
-            return GeminiProvider(model=model_override or "gemini-1.5-flash")
-        return OllamaProvider(model=model_override)
         
     return OllamaProvider(model=model_override)
 
@@ -167,19 +221,16 @@ def get_project_instructions():
             return f.read()
     return ""
 
-from core.prompts import load_prompts
-
 def think(context, task, model=None, prompt_name=None):
     provider = get_provider(model_override=model)
     relevant_memories = search(task, k=3)
     memory_context = "\n".join([f"- {m}" for m in relevant_memories])
     project_rules = get_project_instructions()
-
-    # Load custom prompt if specified, otherwise use active_prompt from config
+    
     prompts = load_prompts()
     active_prompt_name = prompt_name or get_env_with_config("active_prompt") or "default"
     system_instruction = prompts.get(active_prompt_name, prompts["default"])
-
+    
     personality_type = get_env_with_config("personality") or "professional"
     personality_prompt = PERSONALITIES.get(personality_type, PERSONALITIES["professional"])
 
@@ -188,7 +239,6 @@ def think(context, task, model=None, prompt_name=None):
 {personality_prompt}
 
 Core workflow: Research -> Strategy -> Execution.
-...
 
 Available Tools:
 - SEARCH: grep(pattern) or glob(pattern)

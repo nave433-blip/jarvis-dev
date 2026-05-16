@@ -24,7 +24,8 @@ DEFAULT_CONFIG = {
     "nvidia_api_key": "",
     "github_token": "",
     "personality": "professional",
-    "active_prompt": "default"
+    "active_prompt": "default",
+    "model_mode": "manual"
 }
 
 def load_config():

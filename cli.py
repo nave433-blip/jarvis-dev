@@ -439,12 +439,44 @@ def models_menu():
     config = load_config()
     current_p = config.get("provider", "ollama")
     current_m = config.get("jarvis_model", "llama3")
-    console.print(Panel(f"Provider: [bold cyan]{current_p.upper()}[/bold cyan]\nModel: [bold yellow]{current_m}[/bold yellow]", title="LLM Selection"))
-    console.print("\n[1] Ollama | [2] OpenAI | [3] Gemini | [4] Claude | [5] Grok | [6] Mistral | [7] NVIDIA")
+    current_mode = config.get("model_mode", "manual")
+    
+    console.print(Panel(
+        f"Mode: [bold green]{current_mode.upper()}[/bold green]\n"
+        f"Provider: [bold cyan]{current_p.upper()}[/bold cyan]\n"
+        f"Model: [bold yellow]{current_m}[/bold yellow]", 
+        title="LLM Model & Mode Selection"
+    ))
+    
+    console.print("\n[bold]Select Operation Mode:[/bold]")
+    console.print("[a] Auto-Offline | [s] Auto-Online | [x] Auto-Mixed | [m] Manual Select")
+    console.print("\n[bold]Manual Providers:[/bold]")
+    console.print("[1] Ollama | [2] OpenAI | [3] Gemini | [4] Claude | [5] Grok | [6] Mistral | [7] NVIDIA")
     console.print("[8] LM Studio | [9] Llama.cpp | [g] GPT4All | [b] Back")
     
-    choice = Prompt.ask("Select provider", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "g", "b"], default="b")
+    choice = Prompt.ask("Select choice", choices=["a", "s", "x", "m", "1", "2", "3", "4", "5", "6", "7", "8", "9", "g", "b"], default="b")
     
+    if choice == "a":
+        config["model_mode"] = "auto-offline"
+        save_config(config)
+        console.print("[green]Switched to Auto-Offline mode (Local only).[/green]")
+        return
+    elif choice == "s":
+        config["model_mode"] = "auto-online"
+        save_config(config)
+        console.print("[green]Switched to Auto-Online mode (Prioritize cloud).[/green]")
+        return
+    elif choice == "x":
+        config["model_mode"] = "auto-mixed"
+        save_config(config)
+        console.print("[green]Switched to Auto-Mixed mode (Dynamic local/cloud).[/green]")
+        return
+    elif choice == "m":
+        config["model_mode"] = "manual"
+        save_config(config)
+        console.print("[green]Switched to Manual mode.[/green]")
+        return
+
     p_mapping = {
         "1": "ollama", "2": "openai", "3": "gemini", "4": "claude", 
         "5": "grok", "6": "mistral", "7": "nvidia", "8": "lm_studio", 
@@ -452,6 +484,7 @@ def models_menu():
     }
     
     if choice in p_mapping:
+        config["model_mode"] = "manual"
         provider = p_mapping[choice]
         config["provider"] = provider
         
@@ -473,7 +506,7 @@ def models_menu():
         config["jarvis_model"] = new_model
         if provider == "gemini": config["gemini_model"] = new_model
         save_config(config)
-        console.print(f"[green]Switched to {provider.upper()} ({new_model})[/green]")
+        console.print(f"[green]Manual Setup: Switched to {provider.upper()} ({new_model})[/green]")
 
 @app.command()
 def models(provider: str, model: str):
