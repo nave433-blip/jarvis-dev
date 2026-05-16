@@ -55,21 +55,22 @@ def detect_ollama():
     return None
 
 def verify_and_fix_local_llm():
-    """Proactively check local LLM settings and auto-repair if possible."""
+    """Proactively check local LLM settings and auto-repair if possible with ultra-fast timeout."""
     config = load_config()
     if config["provider"] == "ollama":
         try:
-            r = requests.get(f"{config['ollama_host']}/api/tags", timeout=1)
+            # Ultra-short timeout for startup check
+            r = requests.get(f"{config['ollama_host']}/api/tags", timeout=0.5)
             if r.status_code != 200: raise Exception("Host not responding")
         except:
-            console.print("[yellow]⚠️ Configured Ollama host is unreachable. Attempting self-heal...[/yellow]")
+            console.print("[yellow]⚠️ Ollama unreachable. Attempting fast self-heal...[/yellow]")
             auto_host = detect_ollama()
             if auto_host:
                 config["ollama_host"] = auto_host
                 save_config(config)
                 console.print(f"[green]✅ Self-healed: Corrected Ollama host to {auto_host}[/green]")
             else:
-                console.print("[red]❌ Self-heal failed: No local Ollama instance detected. Please start your server.[/red]")
+                console.print("[dim]No local Ollama detected. Moving to cloud fallback if needed.[/dim]")
 
 def smart_input(label, default_val, auto_detect_func=None):
     if Confirm.ask(f"Do you have the specific {label} details (e.g. URL or Key)?"):

@@ -33,15 +33,17 @@ def check_system_health():
                 continue
             
             try:
-                # Run check command
+                # Run check command with 2s timeout to prevent startup hangs
                 cmd = info["check"]
-                res = subprocess.run(cmd, shell=True, cwd=path, capture_output=True, text=True)
+                res = subprocess.run(cmd, shell=True, cwd=path, capture_output=True, text=True, timeout=2.0)
                 
                 if res.returncode == 0:
                     results.append({"name": name, "status": "ONLINE", "error": None})
                 else:
                     error_summary = res.stderr.splitlines()[-1] if res.stderr else "Unknown error"
                     results.append({"name": name, "status": "ERROR", "error": error_summary})
+            except subprocess.TimeoutExpired:
+                results.append({"name": name, "status": "TIMEOUT", "error": "Check command timed out"})
             except Exception as e:
                 results.append({"name": name, "status": "CRITICAL", "error": str(e)})
 

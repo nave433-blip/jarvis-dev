@@ -48,7 +48,7 @@ COMMANDS = [
     "/chat", "/fix", "/forge", "/decode", "/lookup", "/hardware", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
     "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
-    "/git", "/nave", "/sync", "/upgrade", "/update", "/connect", "/launch", "/plan", "/restart", "/exit"
+    "/git", "/nave", "/sync", "/upgrade", "/update", "/connect", "/launch", "/plan", "/restart", "/menu", "/exit"
 ]
 
 def get_bottom_toolbar():
@@ -57,14 +57,62 @@ def get_bottom_toolbar():
         config = load_config()
         model = config.get("jarvis_model", "unknown")
         provider = config.get("provider", "ollama")
-        # Fixed markup: use style attributes for prompt_toolkit HTML
         return HTML(f'<style fg="cyan">📁 {cwd}</style> | <style fg="magenta">🧠 {provider.upper()} ({model})</style>')
     except:
         return HTML('<style fg="red">System Initializing...</style>')
 
 @app.command()
 def menu():
-    """Launch the interactive Gemini-style slash command menu."""
+    """Launch the high-fidelity JARVIS Dashboard Menu."""
+    console.clear()
+    
+    # Header
+    header = Panel(
+        Markdown(f"# JARVIS SYSTEM INTERFACE\nVersion: `{CURRENT_VERSION}` | Role: `Engineering Sovereign`"),
+        style="bold cyan",
+        border_style="cyan"
+    )
+    console.print(header)
+
+    # Main Command Table
+    grid = Table.grid(expand=True)
+    grid.add_column(justify="center")
+    grid.add_column(justify="center")
+    
+    # Left Column: Core Agentic Tools
+    core_table = Table(title="[bold magenta]Core AI Agents[/bold magenta]", show_header=True, header_style="bold magenta", border_style="magenta")
+    core_table.add_column("Command", style="white")
+    core_table.add_column("Function", style="dim")
+    core_table.add_row("/fix", "Autonomous repair & debugging")
+    core_table.add_row("/forge", "Hardcore code synthesis & creation")
+    core_table.add_row("/plan", "Strategic engineering roadmaps")
+    core_table.add_row("/nave", "Multi-model reasoning & refinement")
+    core_table.add_row("/chat", "Direct technical consultation")
+
+    # Right Column: DevOps & System
+    dev_table = Table(title="[bold green]DevOps & Utilities[/bold green]", show_header=True, header_style="bold green", border_style="green")
+    dev_table.add_column("Command", style="white")
+    dev_table.add_column("Function", style="dim")
+    dev_table.add_row("/doctor", "System health & self-repair")
+    dev_table.add_row("/cloud", "Bridge to G-Drive/Dropbox")
+    dev_table.add_row("/network", "Network discovery & security")
+    dev_table.add_row("/hardware", "USB & Physical port probing")
+    dev_table.add_row("/server", "Process & service management")
+    
+    grid.add_row(core_table, dev_table)
+    console.print(grid)
+
+    # Bottom: Config & Updates
+    footer = Panel(
+        "[bold white]Settings:[/bold white] /config | [bold white]Accounts:[/bold white] /connect | [bold white]Identity:[/bold white] /personality | [bold white]Brains:[/bold white] /models | [bold yellow]RESTART[/bold yellow]",
+        border_style="dim"
+    )
+    console.print(footer)
+    console.print("\n[dim]*Type any command or natural language request below.*[/dim]")
+
+@app.command()
+def interactive():
+    """Launch the main interactive Gemini-style prompt."""
     from core.config import verify_and_fix_local_llm
     display_welcome()
     verify_and_fix_local_llm()
@@ -94,38 +142,38 @@ def menu():
             if text in ["/exit", "exit", "quit"]:
                 console.print("[yellow]Goodbye, Sir.[/yellow]"); break
             
-            # --- Smart Intent Router (V3: High-Precision Aggressive) ---
+            # --- Smart Intent Router (V4: Account & Multi-Brain Aware) ---
             text_low = text.lower()
             tokens = text.split()
             first_word = tokens[0].lower() if tokens else ""
             
             verb_map = {
-                "fix": "/fix", "repair": "/fix", "patch": "/fix",
-                "forge": "/forge", "create": "/forge", "build": "/forge",
+                "fix": "/fix", "repair": "/fix", "patch": "/fix", "debug": "/fix",
+                "forge": "/forge", "create": "/forge", "build": "/forge", "synthesize": "/forge",
                 "chat": "/chat", "ask": "/chat", "tell": "/chat",
                 "analyze": "/analyze", "audit": "/analyze", "check": "/analyze",
                 "decode": "/decode", "translate": "/decode",
                 "lookup": "/lookup", "search": "/lookup",
                 "locate": "/locate", "find": "/locate",
-                "update": "/upgrade", "upgrade": "/upgrade",
-                "sync": "/sync", "doctor": "/doctor", "plan": "/plan",
+                "update": "/upgrade", "upgrade": "/upgrade", "sync": "/sync",
+                "login": "/connect", "link": "/connect", "connect": "/connect",
+                "doctor": "/doctor", "plan": "/plan", "menu": "/menu", "dashboard": "/menu",
                 "restart": "/restart", "reboot": "/restart",
-                "cloud": "/cloud", "ssh": "/ssh", "server": "/server",
-                "memory": "/memory", "personality": "/personality", "models": "/models"
+                "cloud": "/cloud", "ssh": "/ssh", "server": "/server"
             }
 
             if not text.startswith("/"):
-                # A. Global Keyword Priority (e.g. "find X and fix Y" -> /fix)
+                # A. Global Keyword Priority
                 if any(kw in text_low for kw in ["fix", "repair", "patch", "debug"]):
-                    # Strip common noise from natural language to isolate target
-                    target = text_low.replace("find", "").replace("and fix", "").replace("fix", "").replace("broken code", "").replace("on my computer", "").replace("on computer", "").strip()
+                    target = text_low.replace("find", "").replace("and fix", "").replace("fix", "").replace("broken code", "").replace("on my computer", "").strip()
                     text = f"/fix {target}"
+                elif any(kw in text_low for kw in ["log in", "login", "link account", "connect to"]):
+                    text = "/connect"
                 
-                # B. Verb Mapping (First Word)
+                # B. Verb Mapping
                 elif first_word in verb_map:
                     args = " ".join(tokens[1:])
                     if first_word in ["find", "locate"]:
-                        # Extract the first probable target (e.g. 'find project_name' -> 'project_name')
                         args = tokens[1] if len(tokens) > 1 else ""
                     text = verb_map[first_word] + " " + args
                 
@@ -141,11 +189,8 @@ def menu():
             # --- Standard Command Processing ---
             parts = text.split(" ", 2)
             cmd = parts[0].lower()
-            
-            # Final command sanitization
             if cmd == "/update": cmd = "/upgrade"
 
-            # Parse prompt override (@persona)
             prompt_name = None
             args = ""
             if len(parts) > 1:
@@ -181,6 +226,7 @@ def menu():
             elif cmd == "/prompts": menus.prompts_menu()
             elif cmd == "/cloud": menus.cloud_menu()
             elif cmd == "/connect": menus.connect_menu()
+            elif cmd == "/menu": menu()
             elif cmd == "/launch":
                 t = args or Prompt.ask("AI agent to launch", choices=["claude-desktop", "claude", "openclaw", "hermes", "opencode", "codex", "copilot", "droid", "pi"])
                 launch(tool=t)
@@ -207,7 +253,7 @@ def menu():
             elif cmd == "/sync": update_all_repos()
             elif cmd == "/exit": break
             else:
-                console.print(f"[red]Unknown command: {cmd}. Try /help.[/red]")
+                console.print(f"[red]Unknown command: {cmd}. Try /help or /menu.[/red]")
 
         except KeyboardInterrupt:
             now = time.time()
@@ -225,7 +271,7 @@ def main(ctx: typer.Context):
         if not CONFIG_FILE.exists():
             console.print("[yellow]No configuration found. Starting setup...[/yellow]")
             setup_wizard()
-        menu()
+        interactive()
 
 @app.command()
 def setup():
