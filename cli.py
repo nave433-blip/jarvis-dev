@@ -23,8 +23,8 @@ app = typer.Typer(help="🚀 JARVIS: The Ultimate Local AI Coding Assistant")
 console = Console()
 
 COMMANDS = [
-    "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", 
-    "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
+    "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
+    "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
     "/prompts", "/troubleshoot", "/free", "/help", "/exit"
 ]
 
@@ -44,10 +44,10 @@ def get_main_menu_table():
     
     table.add_row("/chat", "Ask JARVIS anything")
     table.add_row("/fix", "Autonomous debugging loop")
-    table.add_row("/voice", "Voice control")
-    table.add_row("/watch", "Proactive monitoring")
-    table.add_row("/config", "Settings")
-    table.add_row("/analyze", "Project analytics")
+    table.add_row("/analyze", "Project-wide health analytics")
+    table.add_row("/analyze-file", "Deep analysis of a specific file")
+    table.add_row("/locate", "Search files across the entire computer")
+    table.add_row("/troubleshoot", "Auto-fix terminal errors")
     table.add_row("/undo", "Rollback last edit")
     table.add_row("/dashboard", "Live multi-window TUI")
     table.add_row("/memory", "Manage vector memory")
@@ -55,7 +55,6 @@ def get_main_menu_table():
     table.add_row("/models", "Switch AI models")
     table.add_row("/prompts", "Manage system prompts library")
     table.add_row("/focus", "Set context path")
-    table.add_row("/troubleshoot", "Auto-fix terminal errors")
     table.add_row("/help", "Show documentation")
     table.add_row("/exit", "Quit JARVIS")
     
@@ -110,6 +109,10 @@ def menu():
                 init()
             elif cmd == "/analyze":
                 analyze(args or ".")
+            elif cmd == "/analyze-file":
+                analyze_file(args or Prompt.ask("Path to file"), prompt=prompt_name)
+            elif cmd == "/locate":
+                locate(args or Prompt.ask("Filename to search for"))
             elif cmd == "/undo":
                 undo(args or Prompt.ask("Path to undo"))
             elif cmd == "/dashboard":
@@ -125,7 +128,7 @@ def menu():
             elif cmd == "/focus":
                 focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]:
-                troubleshoot(args or Prompt.ask("Failing command"))
+                troubleshoot(args or Prompt.ask("Failing command"), prompt=prompt_name)
             elif cmd == "/free":
                 free_keys()
             elif cmd in ["/help", "/h"]:
@@ -177,11 +180,18 @@ def robust_help():
     ### 👁 /watch
     Real-time file monitoring.
 
+    ### 🧪 /analyze-file
+    Perform deep security and quality analysis on a single file. You can drag and drop files directly 
+    into the terminal to trigger this.
+
     ### 🖥 /dashboard
     Live multi-window TUI.
 
     ### 🎯 /focus
     Narrow context to a specific path.
+
+    ### 🔍 /locate
+    Search for files or directories across the entire computer and linked storage.
 
     ### 🧠 /memory
     Search or clear persistent history.
@@ -225,6 +235,28 @@ def chat(q: str, model: Optional[str] = typer.Option(None, "--model", "-m"), pro
 def fix(issue: str, model: Optional[str] = typer.Option(None, "--model", "-m"), prompt: Optional[str] = typer.Option(None, "--prompt", "-p")):
     """Autonomous debug loop."""
     debug_loop(issue, model=model, prompt=prompt)
+
+@app.command()
+def analyze_file(path: str, model: Optional[str] = typer.Option(None, "--model", "-m"), prompt: Optional[str] = typer.Option(None, "--prompt", "-p")):
+    """Deeply analyze a single file for bugs and improvements."""
+    if not os.path.exists(path):
+        console.print(f"[red]Error: File not found:[/red] {path}")
+        return
+    
+    with open(path, 'r') as f:
+        content = f.read()
+    
+    console.print(f"[bold blue]Analyzing file:[/bold blue] {path}...")
+    response = think(f"File Path: {path}\nFile Content:\n{content}", "Analyze this file for bugs, security issues, and performance improvements.", model=model, prompt_name=prompt)
+    console.print(Markdown(response))
+
+@app.command()
+def locate(name: str, root: str = "/"):
+    """Search for a file/directory across the entire computer."""
+    from tools.search import system_find
+    console.print(f"[bold blue]Searching for '{name}' starting from {root}...[/bold blue]")
+    results = system_find(name, root)
+    console.print(Panel(results, title=f"Locate Results: {name}"))
 
 @app.command()
 def undo(path: str):
@@ -273,7 +305,7 @@ def config():
 
 @app.command()
 def analyze(path: str = "."):
-    """Perform deep project complexity and health analytics."""
+    """Perform project health analytics."""
     from tools.analytics import project_summary
     console.print(f"[bold blue]Analyzing project at {path}...[/bold blue]")
     summary = project_summary(path)
@@ -281,21 +313,15 @@ def analyze(path: str = "."):
     table = Table(title="Project Health Analytics", border_style="cyan")
     table.add_column("Metric", style="white")
     table.add_column("Value", style="green")
-    
     table.add_row("Total Files", str(summary["total_files"]))
     table.add_row("Total Lines (Python)", str(summary["total_lines"]))
-    
     for lang, count in summary["languages"].items():
         table.add_row(f"Language ({lang})", str(count))
-    
     console.print(table)
-    
     if summary["hotspots"]:
         console.print("\n[bold red]Complexity Hotspots (Refactor Recommended):[/bold red]")
         for hs in summary["hotspots"]:
             console.print(f"- {hs['path']} (Score: {hs['score']})")
-    else:
-        console.print("\n[green]No complexity hotspots detected. Great job![/green]")
 
 @app.command()
 def github(action: str, repo: str, title: str = "", body: str = "", head: str = "", base: str = "main"):
@@ -311,7 +337,6 @@ def github(action: str, repo: str, title: str = "", body: str = "", head: str = 
         res = github_tool.list_pull_requests(repo)
     else:
         res = "Unknown GitHub action."
-    
     console.print(Panel(str(res), title=f"GitHub Result: {action}"))
 
 @app.command()
@@ -353,12 +378,9 @@ def personality_menu():
     from core.config import load_config, save_config
     config = load_config()
     current = config.get("personality", "professional")
-    
     console.print(Panel(f"Current Personality: [bold cyan]{current.capitalize()}[/bold cyan]", title="Personality Settings"))
     console.print("\n[1] Professional | [2] Sarcastic (Grok) | [3] Concise | [4] Mentor | [b] Back")
-    
     choice = Prompt.ask("Select personality", choices=["1", "2", "3", "4", "b"], default="b")
-    
     mapping = {"1": "professional", "2": "sarcastic", "3": "concise", "4": "mentor"}
     if choice in mapping:
         config["personality"] = mapping[choice]
@@ -382,43 +404,20 @@ def models_menu():
     config = load_config()
     current_p = config.get("provider", "ollama")
     current_m = config.get("jarvis_model", "llama3")
-    
     console.print(Panel(f"Current Provider: [bold cyan]{current_p.upper()}[/bold cyan]\nCurrent Model: [bold yellow]{current_m}[/bold yellow]", title="LLM Model Selection"))
-    
     console.print("\n[1] Ollama (Local) | [2] OpenAI | [3] Gemini | [4] Claude | [5] Grok | [6] Mistral | [7] NVIDIA NIM")
     console.print("[8] LM Studio (Offline) | [9] Llama.cpp (Offline) | [b] Back")
-    
     choice = Prompt.ask("Select provider", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "b"], default="b")
-    
-    p_mapping = {
-        "1": "ollama", "2": "openai", "3": "gemini", "4": "claude", 
-        "5": "grok", "6": "mistral", "7": "nvidia", "8": "lm_studio", "9": "llama_cpp"
-    }
-    
+    p_mapping = {"1": "ollama", "2": "openai", "3": "gemini", "4": "claude", "5": "grok", "6": "mistral", "7": "nvidia", "8": "lm_studio", "9": "llama_cpp"}
     if choice in p_mapping:
         provider = p_mapping[choice]
         config["provider"] = provider
-        
-        models = {
-            "ollama": ["llama3", "mistral", "codellama", "phi3"],
-            "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
-            "gemini": ["gemini-1.5-pro", "gemini-1.5-flash"],
-            "claude": ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"],
-            "grok": ["grok-beta"],
-            "mistral": ["mistral-large-latest", "open-mixtral-8x22b"],
-            "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"],
-            "lm_studio": ["local-model"],
-            "llama_cpp": ["local-model"]
-        }
-        
+        models = {"ollama": ["llama3", "mistral", "codellama", "phi3"], "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"], "gemini": ["gemini-1.5-pro", "gemini-1.5-flash"], "claude": ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"], "grok": ["grok-beta"], "mistral": ["mistral-large-latest", "open-mixtral-8x22b"], "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"], "lm_studio": ["local-model"], "llama_cpp": ["local-model"]}
         console.print(f"\n[bold]Common Models for {provider.upper()}:[/bold]")
-        for m in models[provider]:
-            console.print(f"- {m}")
-        
+        for m in models[provider]: console.print(f"- {m}")
         new_model = Prompt.ask("Enter model name", default=models[provider][0])
         config["jarvis_model"] = new_model
-        if provider == "gemini":
-            config["gemini_model"] = new_model
+        if provider == "gemini": config["gemini_model"] = new_model
         save_config(config)
         console.print(f"[green]Switched to {provider.upper()} ({new_model})[/green]")
 
@@ -435,16 +434,13 @@ def models(provider: str, model: str):
 def prompts_menu():
     from core.prompts import load_prompts, save_prompt, delete_prompt, list_prompts
     from core.config import load_config, save_config
-    
     while True:
         console.print(list_prompts())
         config = load_config()
         current = config.get("active_prompt", "default")
         console.print(f"Current Active Prompt: [bold cyan]{current}[/bold cyan]")
-        
         console.print("\n[1] Select Active | [2] Add New | [3] Delete | [b] Back")
         choice = Prompt.ask("Choice", choices=["1", "2", "3", "b"], default="b")
-        
         if choice == "1":
             name = Prompt.ask("Enter prompt name to activate")
             prompts = load_prompts()
@@ -462,24 +458,18 @@ def prompts_menu():
         elif choice == "3":
             name = Prompt.ask("Enter prompt name to delete")
             res = delete_prompt(name)
-            if "Error" in res:
-                console.print(f"[red]{res}[/red]")
-            else:
-                console.print(f"[green]{res}[/green]")
-        else:
-            break
+            if "Error" in res: console.print(f"[red]{res}[/red]")
+            else: console.print(f"[green]{res}[/green]")
+        else: break
 
 @app.command()
 def prompts(action: str = "list", name: str = "", text: str = ""):
-    """Manage custom system prompts (list, add, delete, set)."""
+    """Manage custom system prompts."""
     from core.prompts import list_prompts, save_prompt, delete_prompt, load_prompts
     from core.config import load_config, save_config
-    if action == "list":
-        console.print(list_prompts())
-    elif action == "add":
-        console.print(save_prompt(name, text))
-    elif action == "delete":
-        console.print(delete_prompt(name))
+    if action == "list": console.print(list_prompts())
+    elif action == "add": console.print(save_prompt(name, text))
+    elif action == "delete": console.print(delete_prompt(name))
     elif action == "set":
         config = load_config()
         config["active_prompt"] = name
@@ -488,38 +478,23 @@ def prompts(action: str = "list", name: str = "", text: str = ""):
 
 @app.command()
 def free_keys():
-    """Helpful links and automation to get free AI API keys."""
+    """Automation to get free AI API keys."""
     info = """
     # 🎁 Get Started for Free
-    
     JARVIS can run on 100% free models. Here's how:
-    
-    1. **Google Gemini (Flash):** 
-       - Get a free key at: [https://aistudio.google.com/](https://aistudio.google.com/)
-       - 1,500 requests per day for free.
-    
-    2. **Mistral AI:**
-       - Free tier available for small models and trial credits.
-       - Sign up: [https://console.mistral.ai/](https://console.mistral.ai/)
-    
-    3. **NVIDIA NIM:**
-       - Free credits usually provided upon sign-up.
-       - [https://build.nvidia.com/](https://build.nvidia.com/)
-       
-    4. **Ollama (Local):**
-       - 100% free, forever, runs on your own hardware.
-       - Install: [https://ollama.com/](https://ollama.com/)
+    1. **Google Gemini (Flash):** [https://aistudio.google.com/](https://aistudio.google.com/) (1,500 req/day).
+    2. **Mistral AI:** [https://console.mistral.ai/](https://console.mistral.ai/)
+    3. **NVIDIA NIM:** [https://build.nvidia.com/](https://build.nvidia.com/)
+    4. **Ollama (Local):** [https://ollama.com/](https://ollama.com/) (100% free, runs on your hardware).
     """
     console.print(Panel(Markdown(info), title="Free Tier Automation Helper"))
 
 @app.command()
 def init():
     """Initialize project JARVIS.md."""
-    if os.path.exists("JARVIS.md"):
-        console.print("[yellow]JARVIS.md already exists.[/yellow]")
+    if os.path.exists("JARVIS.md"): console.print("[yellow]JARVIS.md already exists.[/yellow]")
     else:
-        with open("JARVIS.md", "w") as f:
-            f.write("# JARVIS Project Instructions\n\n- Define project rules here.")
+        with open("JARVIS.md", "w") as f: f.write("# JARVIS Project Instructions\n\n- Define project rules here.")
         console.print("[green]Created JARVIS.md[/green]")
 
 if __name__ == "__main__":

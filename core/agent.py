@@ -1,7 +1,7 @@
 import json
 from core.brain import think
 from tools.shell import run, run_simple
-from tools.search import grep, list_files
+from tools.search import grep, list_files, system_find
 from tools.editor import replace_in_file, read_section
 from tools.installer import brew_install, git_install, curl_install
 from tools.github import github_tool
@@ -22,6 +22,8 @@ def dispatch_tool(line, next_line):
         if tool_name == "SEARCH":
             if "grep" in args: return grep(args["grep"])
             return list_files(args.get("glob", "**/*"))
+        elif tool_name == "SYSTEM_SEARCH":
+            return system_find(args["name"], args.get("root", "/"))
         elif tool_name == "READ":
             return read_section(args["path"], args.get("start", 1), args.get("end", 100))
         elif tool_name == "EDIT":
@@ -49,21 +51,20 @@ def dispatch_tool(line, next_line):
         return f"Tool Error: {e}"
     
     return "Unknown tool"
+
 def debug_loop(issue, model=None, prompt=None):
     context = f"Original Issue: {issue}"
 
     for i in range(10): # More steps for complex reasoning
         print(f"\n--- STEP {i+1} ---")
         response = think(context, "Resolve the issue using tools if necessary. If previous tools failed, try a different approach.", model=model, prompt_name=prompt)
-
+        
         print("\nJARVIS RESPONSE:\n", response)
-
+        
         if "ERROR" in response.upper() or "FAILED" in response.upper():
             context += "\nWarning: It seems you hit an error. Try researching the specific error message."
 
         lines = response.split("\n")
-...
-
         tool_result = None
         for j, line in enumerate(lines):
             if line.startswith("TOOL:") and j + 1 < len(lines):

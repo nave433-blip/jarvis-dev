@@ -22,3 +22,12 @@ def grep(pattern, path="."):
 def list_files(pattern="**/*"):
     files = python_glob.glob(pattern, recursive=True)
     return "\n".join([f for f in files if "venv" not in f and ".git" not in f][:100])
+
+def system_find(name, root="/"):
+    """Search for a file/directory by name across the system."""
+    try:
+        # We use a safe find command limited to a depth or result count to prevent hanging
+        cmd = f"find {root} -name '*{name}*' -not -path '*/.*' 2>/dev/null | head -n 20"
+        return subprocess.getoutput(cmd)
+    except Exception as e:
+        return f"System search error: {e}"

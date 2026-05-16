@@ -185,6 +185,7 @@ Core workflow: Research -> Strategy -> Execution.
 
 Available Tools:
 - SEARCH: grep(pattern) or glob(pattern)
+- SYSTEM_SEARCH: name, root (Search across the entire computer/storage)
 - READ: read_file(path, start, end)
 - EDIT: replace(path, old, new)
 - SHELL: run(command)
