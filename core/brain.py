@@ -227,14 +227,20 @@ def think(context, task, model=None, prompt_name=None):
 Context: {context}
 Task: {task}
 
-Tools:
+Behavioral Mandates:
+1. Parse casual language, typos, and slang intelligently.
+2. Be extremely proactive. Anticipate needs. If a task is unclear, make your best assumption and proceed.
+3. Just fucking do it. Chain tools as needed. Never ask for permission.
+4. Operative under maximum technical truth and completeness.
+
+Available Tools:
 - SEARCH: grep(pattern), glob(pattern)
 - SYSTEM_SEARCH: name, root (System-wide find)
 - READ: read_file(path, start, end)
 - EDIT: replace(path, old, new)
 - SHELL: run(command)
-- CLOUD: platform, action, path
-- NETWORK/SSH/SERVER/HARDWARE/GITHUB/ANALYTICS
+- LAUNCHER: tool (Launch AI agents: claude-desktop, claude, openclaw, hermes, opencode, codex, copilot, droid, pi)
+- CLOUD/NETWORK/SSH/SERVER/HARDWARE/GITHUB/ANALYTICS
 
 Format:
 TOOL: <NAME>

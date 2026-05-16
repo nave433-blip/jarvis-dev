@@ -47,8 +47,9 @@ COMMANDS = [
     "/chat", "/fix", "/forge", "/decode", "/lookup", "/hardware", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
     "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
-    "/git", "/nave", "/sync", "/upgrade", "/update", "/exit"
-]
+    "/git", "/nave", "/sync", "/upgrade", "/update", "/connect", "/launch", "/exit"
+    ]
+
 
 def get_bottom_toolbar():
     try:
@@ -63,7 +64,9 @@ def get_bottom_toolbar():
 @app.command()
 def menu():
     """Launch the interactive Gemini-style slash command menu."""
+    from core.config import verify_and_fix_local_llm
     display_welcome()
+    verify_and_fix_local_llm()
     auto_check_on_launch()
 
     completer = WordCompleter(COMMANDS, ignore_case=True)
@@ -167,6 +170,7 @@ def menu():
             elif cmd == "/models": menus.models_menu()
             elif cmd == "/prompts": menus.prompts_menu()
             elif cmd == "/cloud": menus.cloud_menu()
+            elif cmd == "/connect": menus.connect_menu()
             elif cmd == "/model": show_model_status()
             elif cmd == "/focus": focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]: troubleshoot(args or Prompt.ask("Failing command"), prompt=prompt_name)

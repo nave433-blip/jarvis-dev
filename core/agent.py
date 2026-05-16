@@ -12,6 +12,7 @@ from tools.network import scan_network, scan_ports
 from tools.ssh import run_remote
 from tools.server import list_listening_ports, get_process_stats, kill_process
 from tools.hardware import list_usb_devices, probe_ports
+from tools.launcher import launch_tool
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm
@@ -77,6 +78,8 @@ def dispatch_tool(line, next_line):
             if action == "ports": return list_listening_ports()
             if action == "stats": return get_process_stats()
             if action == "kill": return kill_process(args["pid"])
+        elif tool_name == "LAUNCHER":
+            return launch_tool(args.get("tool"))
         elif tool_name == "HARDWARE":
             action = args.get("action", "usb")
             if action == "usb": return list_usb_devices()

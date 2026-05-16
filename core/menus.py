@@ -281,6 +281,32 @@ def ssh_command(args):
     res = run_remote(host, user, cmd)
     console.print(Panel(str(res), title=f"Remote Execution Result: {host}", border_style="cyan"))
 
+def connect_menu():
+    """Streamlined interface to link AI accounts and save API keys."""
+    console.print(Panel("🌐 [bold cyan]Account Connection Center[/bold cyan]", border_style="cyan"))
+    console.print("Select a provider to get your key and save it to JARVIS:")
+    console.print("\n[1] Google Gemini | [2] OpenAI | [3] Anthropic | [4] xAI (Grok) | [5] GitHub | [b] Back")
+    
+    choice = Prompt.ask("Choice", choices=["1", "2", "3", "4", "5", "b"], default="b")
+    
+    mapping = {
+        "1": {"name": "Gemini", "url": "https://aistudio.google.com/app/apikey", "key": "gemini_api_key"},
+        "2": {"name": "OpenAI", "url": "https://platform.openai.com/api-keys", "key": "openai_api_key"},
+        "3": {"name": "Anthropic", "url": "https://console.anthropic.com/settings/keys", "key": "anthropic_api_key"},
+        "4": {"name": "Grok", "url": "https://console.x.ai/", "key": "xai_api_key"},
+        "5": {"name": "GitHub", "url": "https://github.com/settings/tokens", "key": "github_token"}
+    }
+    
+    if choice in mapping:
+        info = mapping[choice]
+        console.print(f"\n[bold]1. Get your key here:[/bold] {info['url']}")
+        if Confirm.ask(f"Do you want to save your {info['name']} key now?"):
+            key_val = Prompt.ask(f"Paste your {info['name']} key", password=True)
+            config = load_config()
+            config[info['key']] = key_val
+            save_config(config)
+            console.print(f"[green]✅ {info['name']} key saved successfully![/green]")
+
 def robust_help():
     """Universal Command Reference & Technical Documentation."""
     from rich.markdown import Markdown
