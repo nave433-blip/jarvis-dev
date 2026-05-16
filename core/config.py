@@ -13,6 +13,7 @@ CONFIG_FILE = CONFIG_DIR / "config.json"
 DEFAULT_CONFIG = {
     "provider": "ollama",
     "ollama_host": "http://localhost:11434",
+    "ollama_token": "", # Added for account connectivity
     "lm_studio_host": "http://localhost:1234",
     "llama_cpp_host": "http://localhost:8080",
     "gpt4all_host": "http://localhost:4891",
@@ -84,23 +85,55 @@ def smart_input(label, default_val, auto_detect_func=None):
 
 def setup_wizard():
     console.print("[bold cyan]Welcome to JARVIS Setup Wizard[/bold cyan]\n")
+    
+    if Confirm.ask("Use [bold green]Automation Mode[/bold green]? (Auto-detects everything)"):
+        quick_setup()
+        return
+
     config = load_config()
     config["provider"] = Prompt.ask("Select your primary LLM provider", choices=["ollama", "gemini", "claude", "openai", "grok", "mistral", "nvidia", "deepseek", "kimi"], default=config["provider"])
+    
     if config["provider"] == "ollama":
         config["ollama_host"] = smart_input("Ollama Host URL", config["ollama_host"], auto_detect_func=detect_ollama)
         config["jarvis_model"] = Prompt.ask("Ollama Model Name", default=config["jarvis_model"])
+    
     if Confirm.ask("Would you like to configure Cloud API Keys now?"):
-        for key in ["gemini_api_key", "openai_api_key", "anthropic_api_key", "xai_api_key", "mistral_api_key", "nvidia_api_key", "deepseek_api_key", "moonshot_api_key"]:
+        for key in ["gemini_api_key", "openai_api_key", "anthropic_api_key", "xai_api_key", "mistral_api_key", "nvidia_api_key", "deepseek_api_key", "moonshot_api_key", "ollama_token"]:
             name = key.replace("_", " ").title()
             if Confirm.ask(f"Configure {name}?"):
                 config[key] = Prompt.ask(f"Enter {name}", default=config.get(key, ""), password=True)
+
     if Confirm.ask("Configure external integrations (GitHub, Cloud Storage)?"):
         config["github_token"] = Prompt.ask("GitHub Personal Access Token", default=config.get("github_token", ""), password=True)
         config["dropbox_token"] = Prompt.ask("Dropbox API Token", default=config.get("dropbox_token", ""), password=True)
         config["gdrive_token"] = Prompt.ask("Google Drive API Token", default=config.get("gdrive_token", ""), password=True)
+
     config["self_repair"] = Confirm.ask("Enable autonomous self-repair?", default=config.get("self_repair", True))
     save_config(config)
     console.print("\n[green]Configuration saved successfully.[/green]")
+
+def quick_setup():
+    """Hyper-automated setup for JARVIS."""
+    console.print("[bold cyan]🚀 Initializing JARVIS Automation Setup...[/bold cyan]")
+    config = load_config()
+    
+    # 1. Detect Ollama
+    host = detect_ollama()
+    if host:
+        config["provider"] = "ollama"
+        config["ollama_host"] = host
+        config["jarvis_model"] = "llama3"
+        console.print(f"[green]✅ Local Ollama detected at {host}[/green]")
+    else:
+        console.print("[yellow]⚠️ No local Ollama found. Defaulting to Gemini Cloud (requires key).[/yellow]")
+        config["provider"] = "gemini"
+    
+    # 2. Set defaults for everything else
+    config["self_repair"] = True
+    config["model_mode"] = "auto-mixed"
+    
+    save_config(config)
+    console.print("[bold green]✅ Automation Complete! JARVIS is ready to engineering.[/bold green]")
 
 def get_env_with_config(key):
     config = load_config()
