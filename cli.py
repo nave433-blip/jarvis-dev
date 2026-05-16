@@ -47,7 +47,7 @@ COMMANDS = [
     "/chat", "/fix", "/forge", "/decode", "/lookup", "/hardware", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
     "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
-    "/git", "/nave", "/sync", "/upgrade", "/exit"
+    "/git", "/nave", "/sync", "/upgrade", "/connect", "/exit"
 ]
 
 def get_bottom_toolbar():
@@ -146,6 +146,7 @@ def menu():
             elif cmd == "/focus": focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]: troubleshoot(args or Prompt.ask("Failing command"), prompt=prompt_name)
             elif cmd == "/free": free_keys()
+            elif cmd == "/connect": connect_menu()
             elif cmd == "/doctor": run_doctor()
             elif cmd == "/git": ai_git(args or Prompt.ask("What git operation?"))
             elif cmd == "/search":
@@ -322,6 +323,36 @@ def run_doctor():
 def ai_git(task: str):
     prompt = f"Perform git task: {task}"
     response = think("", prompt); console.print(Markdown(response))
+
+@app.command()
+def connect():
+    """Streamlined interface to link AI accounts and save API keys."""
+    connect_menu()
+
+def connect_menu():
+    console.print(Panel("🌐 [bold cyan]Account Connection Center[/bold cyan]", border_style="cyan"))
+    console.print("Select a provider to get your key and save it to JARVIS:")
+    console.print("\n[1] Google Gemini | [2] OpenAI | [3] Anthropic | [4] xAI (Grok) | [5] GitHub | [b] Back")
+    
+    choice = Prompt.ask("Choice", choices=["1", "2", "3", "4", "5", "b"], default="b")
+    
+    mapping = {
+        "1": {"name": "Gemini", "url": "https://aistudio.google.com/app/apikey", "key": "gemini_api_key"},
+        "2": {"name": "OpenAI", "url": "https://platform.openai.com/api-keys", "key": "openai_api_key"},
+        "3": {"name": "Anthropic", "url": "https://console.anthropic.com/settings/keys", "key": "anthropic_api_key"},
+        "4": {"name": "Grok", "url": "https://console.x.ai/", "key": "xai_api_key"},
+        "5": {"name": "GitHub", "url": "https://github.com/settings/tokens", "key": "github_token"}
+    }
+    
+    if choice in mapping:
+        info = mapping[choice]
+        console.print(f"\n[bold]1. Get your key here:[/bold] {info['url']}")
+        if Confirm.ask(f"Do you want to save your {info['name']} key now?"):
+            key_val = Prompt.ask(f"Paste your {info['name']} key", password=True)
+            config = load_config()
+            config[info['key']] = key_val
+            save_config(config)
+            console.print(f"[green]✅ {info['name']} key saved successfully![/green]")
 
 @app.command()
 def init():

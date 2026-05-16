@@ -4,6 +4,10 @@ import json
 from memory.vector import add, search
 from core.config import get_env_with_config
 from core.prompts import load_prompts
+from tools.prober import find_most_logical_server
+from rich.console import Console
+
+console = Console()
 
 def is_connected():
     """Check if the user is online."""
@@ -28,7 +32,7 @@ class OllamaProvider(LLMProvider):
     def ask(self, prompt, context=""):
         import time
         max_retries = 3
-        timeout = 120 # Increased to 2 minutes
+        timeout = 120 
         
         for attempt in range(max_retries):
             try:
@@ -56,14 +60,10 @@ class OpenAICompatibleProvider(LLMProvider):
 
     def ask(self, prompt, context=""):
         if not self.api_key:
-            # Autonomous Key Recovery
             console.print(f"[dim]⚠️ API Key missing for {self.url}. Attempting autonomous recovery...[/dim]")
             from tools.search import system_find
-            # Look for common key containers
             results = system_find(".env")
             if results and "/" in results:
-                # If a .env exists, the agent can potentially read it later
-                # For now, we'll inform the brain to suggest /config or /free
                 return f"Error: API Key missing. JARVIS found potential keys in local .env files. Please use '/config' to set them or '/free' for help."
             return f"Error: API Key missing for {self.url}. Use '/free' to get one or '/config' to set it."
         
@@ -123,105 +123,69 @@ class ClaudeProvider(LLMProvider):
         except Exception as e:
             return f"Claude Error: {e}"
 
-def get_best_offline():
-    """Auto-detect and return the best available offline provider."""
-    # Check Ollama
-    try:
-        host = get_env_with_config("ollama_host") or "http://localhost:11434"
-        requests.get(f"{host}/api/tags", timeout=0.5)
-        return OllamaProvider()
-    except: pass
+def get_best_available():
+    """Autonomous search for ANY working brain."""
+    # 1. Search local endpoints
+    server = find_most_logical_server()
+    if server:
+        if "11434" in server: return OllamaProvider()
+        return OpenAICompatibleProvider(api_key="local", url=f"{server}/v1/chat/completions", model="local-model")
     
-    # Check LM Studio
-    try:
-        host = get_env_with_config("lm_studio_host") or "http://localhost:1234"
-        requests.get(f"{host}/v1/models", timeout=0.5)
-        return OpenAICompatibleProvider(api_key="lm-studio", url=f"{host}/v1/chat/completions", model="local-model")
-    except: pass
+    # 2. Check cloud free tiers
+    if get_env_with_config("gemini_api_key"): return GeminiProvider(model="gemini-1.5-flash")
     
-    # Fallback to Ollama even if it fails (standard default)
     return OllamaProvider()
 
-def get_best_online():
-    """Auto-detect and return the best available online provider."""
-    # Prioritize Gemini Free Tier
-    if get_env_with_config("gemini_api_key"):
-        return GeminiProvider(model="gemini-1.5-flash")
-    # Then OpenAI
-    if get_env_with_config("openai_api_key"):
-        return OpenAICompatibleProvider(
-            api_key=get_env_with_config("openai_api_key"),
-            url="https://api.openai.com/v1/chat/completions",
-            model="gpt-4o-mini"
-        )
-    # Then Grok
-    if get_env_with_config("xai_api_key"):
-        return OpenAICompatibleProvider(
-            api_key=get_env_with_config("xai_api_key"),
-            url="https://api.x.ai/v1/chat/completions",
-            model="grok-beta"
-        )
-    return None
+# Task-to-Model Mapping (Recommended models for specific domains)
+TASK_RECOMMENDATIONS = {
+    "coding": ["codellama", "gpt-4o", "claude-3-5-sonnet-20240620"],
+    "research": ["llama3", "gemini-1.5-pro", "mistral-large-latest"],
+    "creative": ["gpt-4o", "claude-3-opus-20240229"],
+    "fast": ["phi3", "gemini-1.5-flash", "gpt-4o-mini"]
+}
 
-def get_provider(model_override=None):
+def get_provider(model_override=None, task_hint=None):
     mode = get_env_with_config("model_mode") or "manual"
+    
+    if mode != "manual":
+        # Task-aware autonomous selection
+        if task_hint and task_hint in TASK_RECOMMENDATIONS:
+            # Try to find the best available from the recommended list
+            # For now, we prioritize the first working one
+            return get_best_available()
+        return get_best_available()
+
+    # Manual Selection
     p = get_env_with_config("provider") or "ollama"
     p = p.lower()
     
-    # List of all potential providers in order of fallback priority
-    # Local First -> Cloud Free -> Cloud Paid
-    providers = []
-    
-    # 1. Primary choice
-    if p == "ollama": providers.append(OllamaProvider(model=model_override))
-    elif p == "gemini": providers.append(GeminiProvider(model=model_override))
-    elif p == "claude": providers.append(ClaudeProvider(model=model_override))
-    # ... (other cases handled by manual selection below)
-
-    # 2. Local Fallbacks
-    providers.append(OllamaProvider())
-    providers.append(OpenAICompatibleProvider(
-        api_key="lm-studio", 
-        url=f"{get_env_with_config('lm_studio_host')}/v1/chat/completions", 
-        model="local-model"
-    ))
-    providers.append(OpenAICompatibleProvider(
-        api_key="not-needed", 
-        url=f"{get_env_with_config('gpt4all_host')}/v1/chat/completions", 
-        model="local-model"
-    ))
-
-    # 3. Cloud Fallbacks (only if key exists)
-    if get_env_with_config("gemini_api_key"):
-        providers.append(GeminiProvider(model="gemini-1.5-flash"))
-    if get_env_with_config("openai_api_key"):
-        providers.append(OpenAICompatibleProvider(
+    if p == "gemini": return GeminiProvider(model=model_override)
+    if p == "claude": return ClaudeProvider(model=model_override)
+    if p == "openai":
+        return OpenAICompatibleProvider(
             api_key=get_env_with_config("openai_api_key"),
             url="https://api.openai.com/v1/chat/completions",
-            model="gpt-4o-mini"
-        ))
-
-    # Autonomous "Indestructible" Brain Selection
-    # If mode is not manual, we try to find the FIRST working one
-    for provider in providers:
-        try:
-            # Quick health check for local providers
-            if isinstance(provider, OllamaProvider):
-                requests.get(provider.url.replace("/api/generate", "/api/tags"), timeout=0.2)
-                return provider
-            if "localhost" in getattr(provider, 'url', ''):
-                # Generic check for other local servers
-                requests.get(provider.url.replace("/v1/chat/completions", "/v1/models"), timeout=0.2)
-                return provider
-            
-            # For cloud, we check if key exists and internet is on
-            if is_connected():
-                if getattr(provider, 'api_key', None):
-                    return provider
-        except:
-            continue
-
-    # Final fallback if everything else fails
+            model=model_override or "gpt-4o"
+        )
+    if p == "grok":
+        return OpenAICompatibleProvider(
+            api_key=get_env_with_config("xai_api_key"),
+            url="https://api.x.ai/v1/chat/completions",
+            model=model_override or "grok-beta"
+        )
+    if p == "mistral":
+        return OpenAICompatibleProvider(
+            api_key=get_env_with_config("mistral_api_key"),
+            url="https://api.mistral.ai/v1/chat/completions",
+            model=model_override or "mistral-large-latest"
+        )
+    if p == "nvidia":
+        return OpenAICompatibleProvider(
+            api_key=get_env_with_config("nvidia_api_key"),
+            url="https://integrate.api.nvidia.com/v1/chat/completions",
+            model=model_override or "nvidia/llama-3.1-405b-instruct"
+        )
+        
     return OllamaProvider(model=model_override)
 
 PERSONALITIES = {
@@ -239,7 +203,12 @@ def get_project_instructions():
     return ""
 
 def think(context, task, model=None, prompt_name=None):
-    provider = get_provider(model_override=model)
+    # Detect task hint for smarter model selection
+    task_hint = "general"
+    if any(x in task.lower() for x in ["code", "fix", "forge", "refactor"]): task_hint = "coding"
+    elif any(x in task.lower() for x in ["research", "explain", "why"]): task_hint = "research"
+    
+    provider = get_provider(model_override=model, task_hint=task_hint)
     relevant_memories = search(task, k=3)
     memory_context = "\n".join([f"- {m}" for m in relevant_memories])
     project_rules = get_project_instructions()
