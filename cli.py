@@ -32,6 +32,7 @@ from core.ui import display_welcome, get_main_menu_table
 from core.health import check_system_health, display_health_report, auto_repair_workspace, update_all_repos
 from core.repair import auto_check_on_launch
 from core.nave_loop import run_nave_loop
+from core.handler import CommandHandler
 import core.menus as menus
 
 # Prompt Toolkit for slash commands
@@ -44,12 +45,20 @@ from prompt_toolkit.formatted_text import HTML
 app = typer.Typer(help="🚀 JARVIS: The Ultimate Local AI Coding Assistant")
 console = Console()
 
+# Initialize Advanced Handler
+handler = CommandHandler()
+
 COMMANDS = [
     "/chat", "/fix", "/forge", "/decode", "/lookup", "/hardware", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
     "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
     "/git", "/nave", "/sync", "/upgrade", "/update", "/connect", "/launch", "/plan", "/restart", "/reinstall", "/menu", "/exit"
 ]
+
+# Register commands for fuzzy matching
+for cmd in COMMANDS:
+    if cmd != "/exit":
+        handler.register(cmd, lambda x: None, help="System command")
 
 def get_bottom_toolbar():
     try:
@@ -111,111 +120,86 @@ def interactive():
             if text in ["/exit", "exit", "quit"]:
                 console.print("[yellow]Goodbye, Sir.[/yellow]"); break
             
-            # --- Smart Intent Router (V4: Proactive & Robust) ---
-            text_low = text.lower()
-            tokens = text.split()
-            first_word = tokens[0].lower() if tokens else ""
+            # --- Use Advanced Handler ---
+            res = handler.handle(text)
             
-            verb_map = {
-                "fix": "/fix", "repair": "/fix", "patch": "/fix", "debug": "/fix",
-                "forge": "/forge", "create": "/forge", "build": "/forge", "synthesize": "/forge",
-                "chat": "/chat", "ask": "/chat", "tell": "/chat",
-                "analyze": "/analyze", "audit": "/analyze", "check": "/analyze",
-                "decode": "/decode", "translate": "/decode",
-                "lookup": "/lookup", "search": "/lookup",
-                "locate": "/locate", "find": "/locate",
-                "update": "/upgrade", "upgrade": "/upgrade", "sync": "/sync",
-                "login": "/connect", "link": "/connect", "connect": "/connect",
-                "reinstall": "/reinstall", "reset": "/reinstall",
-                "doctor": "/doctor", "plan": "/plan", "menu": "/menu", "dashboard": "/menu",
-                "restart": "/restart", "reboot": "/restart",
-                "cloud": "/cloud", "ssh": "/ssh", "server": "/server"
-            }
-
-            if not text.startswith("/"):
-                # A. Global Keyword Priority
-                if any(kw in text_low for kw in ["fix", "repair", "patch", "debug"]):
-                    target = text_low.replace("find", "").replace("and fix", "").replace("fix", "").replace("broken code", "").replace("on my computer", "").strip()
-                    text = f"/fix {target}"
-                elif any(kw in text_low for kw in ["log in", "login", "link account", "connect to", "openxai"]):
-                    text = "/connect"
-                elif any(kw in text_low for kw in ["reinstall", "start over", "clean install"]):
-                    text = "/reinstall"
+            if res.get("type") == "internal":
+                cmd = res["command"]
+                args = res.get("args", "")
                 
-                # B. Verb Mapping
-                elif first_word in verb_map:
-                    args = " ".join(tokens[1:])
-                    if first_word in ["find", "locate"]:
-                        args = tokens[1] if len(tokens) > 1 else ""
-                    text = verb_map[first_word] + " " + args
+                # Check for prompt override (@persona) in args if not already parsed
+                prompt_name = None
+                if "@" in args:
+                    parts = args.split("@", 1)
+                    args = parts[0].strip()
+                    prompt_name = parts[1].split()[0]
                 
-                # C. Natural Language Fallback
+                # --- Routing Table ---
+                if cmd == "/chat": chat(args or Prompt.ask("Question"), prompt=prompt_name)
+                elif cmd == "/fix": fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name)
+                elif cmd == "/plan": plan(args or Prompt.ask("Task for strategy"))
+                elif cmd == "/forge": forge(args or Prompt.ask("Task to forge"))
+                elif cmd == "/decode": decode(args or Prompt.ask("Content to decode"))
+                elif cmd == "/lookup": lookup(args or Prompt.ask("What to find?"))
+                elif cmd == "/hardware": hardware_menu()
+                elif cmd == "/voice": voice()
+                elif cmd == "/watch": watch()
+                elif cmd == "/config": menus.config_menu()
+                elif cmd == "/init": init()
+                elif cmd == "/analyze": analyze(args or ".")
+                elif cmd == "/analyze-file": analyze_file(args or Prompt.ask("Path to file"), prompt=prompt_name)
+                elif cmd == "/locate": locate(args or Prompt.ask("Search name"))
+                elif cmd == "/network": menus.network_menu()
+                elif cmd == "/ssh": menus.ssh_command(args)
+                elif cmd == "/server": menus.server_menu()
+                elif cmd == "/undo": undo(args or Prompt.ask("Path to undo"))
+                elif cmd == "/dashboard": dashboard()
+                elif cmd == "/memory": menus.memory_menu()
+                elif cmd == "/personality": menus.personality_menu()
+                elif cmd == "/models": menus.models_menu()
+                elif cmd == "/prompts": menus.prompts_menu()
+                elif cmd == "/cloud": menus.cloud_menu()
+                elif cmd == "/connect": menus.connect_menu()
+                elif cmd == "/menu": menu()
+                elif cmd == "/reinstall": reinstall()
+                elif cmd == "/launch":
+                    t = args or Prompt.ask("AI tool", choices=["claude-desktop", "claude", "openclaw", "hermes", "opencode", "codex", "copilot", "droid", "pi"])
+                    launch(tool=t)
+                elif cmd == "/model": show_model_status()
+                elif cmd == "/focus": focus(args or Prompt.ask("Path"))
+                elif cmd in ["/troubleshoot", "/t"]: troubleshoot(args or Prompt.ask("Command"), prompt=prompt_name)
+                elif cmd == "/free": free_keys()
+                elif cmd == "/doctor": run_doctor()
+                elif cmd == "/git": ai_git(args or Prompt.ask("Git task?"))
+                elif cmd == "/restart": restart()
+                elif cmd == "/search":
+                    q = args or Prompt.ask("Search history")
+                    results = session.history.get_strings()
+                    matches = [s for s in results if q.lower() in s.lower()]
+                    console.print(Panel("\n".join(matches[-10:]), title=f"History: {q}"))
+                elif cmd == "/clear": console.clear()
+                elif cmd == "/help": menus.robust_help()
+                elif cmd == "/health": display_health_report(check_system_health())
+                elif cmd == "/upgrade":
+                    from core.update import manual_upgrade
+                    manual_upgrade()
+                elif cmd == "/sync": update_all_repos()
+                else: console.print(f"[red]Routing error for: {cmd}[/red]")
+            
+            elif res.get("type") == "shell":
+                cmd = res["command"]
+                if res.get("confirm", True):
+                    console.print(Panel(f"[bold red]⚠️ EXECUTE SHELL COMMAND?[/bold red]\n\n[white]{cmd}[/white]", border_style="red"))
+                    if Confirm.ask("Authorize?"):
+                        from tools.shell import run_simple
+                        console.print(run_simple(cmd))
                 else:
-                    config = load_config()
-                    if config.get("personality") == "nave_ai": run_nave_loop(text)
-                    else: chat(text)
-                    continue
-
-            # --- Standard Command Processing ---
-            parts = text.split(" ", 2)
-            cmd = parts[0].lower()
-            if cmd == "/update": cmd = "/upgrade"
-
-            prompt_name = parts[1][1:] if len(parts) > 1 and parts[1].startswith("@") else None
-            args = parts[2] if prompt_name and len(parts) > 2 else (" ".join(parts[1:]) if len(parts) > 1 else "")
-
-            # --- Routing Table ---
-            if cmd == "/chat": chat(args or Prompt.ask("Question"), prompt=prompt_name)
-            elif cmd == "/fix": fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name)
-            elif cmd == "/plan": plan(args or Prompt.ask("Task for strategy"))
-            elif cmd == "/forge": forge(args or Prompt.ask("Task to forge"))
-            elif cmd == "/decode": decode(args or Prompt.ask("Content to decode"))
-            elif cmd == "/lookup": lookup(args or Prompt.ask("What to find?"))
-            elif cmd == "/hardware": hardware_menu()
-            elif cmd == "/voice": voice()
-            elif cmd == "/watch": watch()
-            elif cmd == "/config": menus.config_menu()
-            elif cmd == "/init": init()
-            elif cmd == "/analyze": analyze(args or ".")
-            elif cmd == "/analyze-file": analyze_file(args or Prompt.ask("Path to file"), prompt=prompt_name)
-            elif cmd == "/locate": locate(args or Prompt.ask("Search name"))
-            elif cmd == "/network": menus.network_menu()
-            elif cmd == "/ssh": menus.ssh_command(args)
-            elif cmd == "/server": menus.server_menu()
-            elif cmd == "/undo": undo(args or Prompt.ask("Path to undo"))
-            elif cmd == "/dashboard": dashboard()
-            elif cmd == "/memory": menus.memory_menu()
-            elif cmd == "/personality": menus.personality_menu()
-            elif cmd == "/models": menus.models_menu()
-            elif cmd == "/prompts": menus.prompts_menu()
-            elif cmd == "/cloud": menus.cloud_menu()
-            elif cmd == "/connect": menus.connect_menu()
-            elif cmd == "/menu": menu()
-            elif cmd == "/reinstall": reinstall()
-            elif cmd == "/launch":
-                t = args or Prompt.ask("AI tool", choices=["claude-desktop", "claude", "openclaw", "hermes", "opencode", "codex", "copilot", "droid", "pi"])
-                launch(tool=t)
-            elif cmd == "/model": show_model_status()
-            elif cmd == "/focus": focus(args or Prompt.ask("Path"))
-            elif cmd in ["/troubleshoot", "/t"]: troubleshoot(args or Prompt.ask("Command"), prompt=prompt_name)
-            elif cmd == "/free": free_keys()
-            elif cmd == "/doctor": run_doctor()
-            elif cmd == "/git": ai_git(args or Prompt.ask("Git task?"))
-            elif cmd == "/restart": restart()
-            elif cmd == "/search":
-                q = args or Prompt.ask("Search history")
-                results = session.history.get_strings()
-                matches = [s for s in results if q.lower() in s.lower()]
-                console.print(Panel("\n".join(matches[-10:]), title=f"History: {q}"))
-            elif cmd == "/clear": console.clear()
-            elif cmd == "/help": menus.robust_help()
-            elif cmd == "/health": display_health_report(check_system_health())
-            elif cmd == "/upgrade":
-                from core.update import manual_upgrade
-                manual_upgrade()
-            elif cmd == "/sync": update_all_repos()
-            elif cmd == "/exit": break
-            else: console.print(f"[red]Unknown command: {cmd}. Type /help or /menu.[/red]")
+                    from tools.shell import run_simple
+                    console.print(run_simple(cmd))
+            
+            else:
+                # Type is 'chat'
+                chat(res.get("args", text))
 
         except KeyboardInterrupt:
             now = time.time()
