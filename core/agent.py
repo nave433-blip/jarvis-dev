@@ -10,8 +10,10 @@ from tools.cloud import list_dropbox, list_gdrive, list_icloud
 from tools.network import scan_network, scan_ports
 from tools.ssh import run_remote
 from tools.server import list_listening_ports, get_process_stats, kill_process
+from tools.hardware import list_usb_devices, probe_ports
 from rich.console import Console
 from rich.panel import Panel
+from rich.prompt import Confirm
 
 console = Console()
 
@@ -33,7 +35,6 @@ def dispatch_tool(line, next_line):
         elif tool_name == "EDIT":
             return replace_in_file(args["path"], args["old"], args["new"])
         elif tool_name == "SHELL":
-            from tools.shell import run
             res = run(args["command"])
             if isinstance(res, dict) and res.get("status") == "needs_confirmation":
                 console.print(Panel(f"[bold red]⚠️ POTENTIALLY UNSAFE COMMAND DETECTED[/bold red]\n\n[white]{res['command']}[/white]", border_style="red"))
@@ -75,6 +76,10 @@ def dispatch_tool(line, next_line):
             if action == "ports": return list_listening_ports()
             if action == "stats": return get_process_stats()
             if action == "kill": return kill_process(args["pid"])
+        elif tool_name == "HARDWARE":
+            action = args.get("action", "usb")
+            if action == "usb": return list_usb_devices()
+            if action == "probe": return probe_ports()
             
     except Exception as e:
         return f"Tool Error: {e}"
@@ -84,7 +89,7 @@ def dispatch_tool(line, next_line):
 def debug_loop(issue, model=None, prompt=None):
     context = f"Original Issue: {issue}"
 
-    for i in range(10): # More steps for complex reasoning
+    for i in range(10): 
         print(f"\n--- STEP {i+1} ---")
         response = think(context, "Resolve the issue using tools if necessary. If previous tools failed, try a different approach.", model=model, prompt_name=prompt)
         
@@ -104,7 +109,6 @@ def debug_loop(issue, model=None, prompt=None):
             print("\nTOOL RESULT:\n", tool_result)
             context += f"\nStep {i+1} Tool Output:\n{tool_result}"
         else:
-            # If no tool was used, assume JARVIS is done or giving final answer
             ok = input("\nJARVIS seems to have finished. Exit? (y/n): ")
             if ok.lower() == "y":
                 return
@@ -112,22 +116,23 @@ def debug_loop(issue, model=None, prompt=None):
 
 def troubleshoot_loop(command, model=None, prompt=None):
     console.print(f"[bold cyan]Troubleshooting command:[/bold cyan] {command}")
-    
-    # Execute the failing command
     result = run(command, confirm=True) 
     
     if result.get("return_code") == 0:
         console.print("[green]Command succeeded on first try. No troubleshooting needed.[/green]")
         return
     
-    error_context = f"""
-    COMMAND FAILED: {command}
-    RETURN CODE: {result.get('return_code')}
-    STDERR: {result.get('stderr')}
-    STDOUT: {result.get('stdout')}
-    """
-    
+    error_context = f"COMMAND FAILED: {command}\nRETURN CODE: {result.get('return_code')}\nSTDERR: {result.get('stderr')}\nSTDOUT: {result.get('stdout')}"
     console.print(Panel(error_context, title="Error Captured", border_style="red"))
-    
-    # Pass to the debug loop for fixing
     debug_loop(f"Fix the error caused by this command: {command}. Error context: {error_context}", model=model, prompt=prompt)
+
+def forge_loop(task, model=None):
+    """Hardcore code synthesis loop."""
+    from core.nave_loop import run_nave_loop
+    console.print(Panel(f"🛠 [bold cyan]FORGING CODE:[/bold cyan] {task}", border_style="cyan"))
+    
+    # Use Nave Loop for advanced reasoning
+    refined_plan = run_nave_loop(f"Create a workaround or new code for this task: {task}. Ensure it is advanced and human-unprecedented.")
+    
+    # Feed refined plan back into agent loop for execution
+    debug_loop(f"Execute the following refined engineering plan: {refined_plan}", model=model, prompt="architect")

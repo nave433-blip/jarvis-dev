@@ -26,7 +26,7 @@ from rich.prompt import Prompt, Confirm
 
 # Internal Modules
 from core.brain import think, get_provider
-from core.agent import debug_loop, troubleshoot_loop
+from core.agent import debug_loop, troubleshoot_loop, forge_loop
 from core.config import setup_wizard, get_env_with_config, CONFIG_FILE, load_config, save_config
 from core.ui import display_welcome, get_main_menu_table
 from core.health import check_system_health, display_health_report, auto_repair_workspace, update_all_repos
@@ -44,27 +44,21 @@ app = typer.Typer(help="🚀 JARVIS: The Ultimate Local AI Coding Assistant")
 console = Console()
 
 COMMANDS = [
-    "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
+    "/chat", "/fix", "/forge", "/decode", "/lookup", "/hardware", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
-    "/git", "/nave", "/sync", "/search", "/clear", "/help", "/health", "/upgrade", "/exit"
+    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/health", "/upgrade", "/nave", "/sync", "/doctor", "/git", "/search", "/clear", "/exit"
 ]
 
 @app.command()
 def menu():
     """Launch the interactive Gemini-style slash command menu."""
     display_welcome()
-    
-    # 1. System Health Check at Launch (Automatic if configured)
     auto_check_on_launch()
 
     completer = WordCompleter(COMMANDS, ignore_case=True)
-    
-    # Add Gemini-style Escape-to-cancel binding
     kb = KeyBindings()
     @kb.add('escape')
-    def _(event):
-        event.app.exit(result="/exit")
+    def _(event): event.app.exit(result="/exit")
 
     session = PromptSession(completer=completer, key_bindings=kb)
     style = Style.from_dict({'prompt': 'ansicyan bold'})
@@ -72,25 +66,19 @@ def menu():
 
     while True:
         try:
-            # Display Workspace Info Box before each prompt
             cwd = os.getcwd()
             console.print(Panel(f"📁 [bold white]Workspace:[/bold white] [cyan]{cwd}[/cyan]", border_style="dim", expand=False))
             
             text = session.prompt('JARVIS > ', style=style).strip()
             last_ctrl_c = 0 
-            
             if not text: continue
-            if text == "/exit": # Handled by Escape key
-                console.print("[yellow]Goodbye, Sir.[/yellow]")
-                break
+            if text == "/exit":
+                console.print("[yellow]Goodbye, Sir.[/yellow]"); break
             
             if not text.startswith("/"):
-                # Use Nave AI loop if personality is set
                 config = load_config()
-                if config.get("personality") == "nave_ai":
-                    nave(text)
-                else:
-                    chat(text)
+                if config.get("personality") == "nave_ai": run_nave_loop(text)
+                else: chat(text)
                 continue
 
             parts = text.split(" ", 2)
@@ -98,16 +86,14 @@ def menu():
             prompt_name = parts[1][1:] if len(parts) > 1 and parts[1].startswith("@") else None
             args = parts[2] if prompt_name and len(parts) > 2 else (" ".join(parts[1:]) if len(parts) > 1 else "")
 
-            if cmd == "/chat": 
-                config = load_config()
-                if config.get("personality") == "nave_ai":
-                    nave(args or Prompt.ask("Idea to refine"))
-                else:
-                    chat(args or Prompt.ask("Question"), prompt=prompt_name)
-            elif cmd == "/nave": nave(args or Prompt.ask("Idea to refine"))
+            if cmd == "/chat": chat(args or Prompt.ask("Question"), prompt=prompt_name)
             elif cmd == "/fix": fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name)
-            elif cmd in ["/voice", "/v"]: voice()
-            elif cmd in ["/watch", "/w"]: watch()
+            elif cmd == "/forge": forge(args or Prompt.ask("Task to forge"))
+            elif cmd == "/decode": decode(args or Prompt.ask("Text/Script to decode"))
+            elif cmd == "/lookup": lookup(args or Prompt.ask("Command to find"))
+            elif cmd == "/hardware": hardware_menu()
+            elif cmd == "/voice": voice()
+            elif cmd == "/watch": watch()
             elif cmd == "/config": menus.config_menu()
             elif cmd == "/init": init()
             elif cmd == "/analyze": analyze(args or ".")
@@ -134,53 +120,22 @@ def menu():
                 results = session.history.get_strings()
                 matches = [s for s in results if q.lower() in s.lower()]
                 console.print(Panel("\n".join(matches[-10:]), title=f"History Search: {q}"))
-            elif cmd == "/clear":
-                console.clear()
+            elif cmd == "/clear": console.clear()
             elif cmd in ["/help", "/h"]: menus.robust_help()
-            elif cmd == "/health":
-                health_results = check_system_health()
-                display_health_report(health_results)
-            elif cmd == "/upgrade":
-                from core.update import manual_upgrade
-                manual_upgrade()
-            elif cmd == "/sync":
-                update_all_repos()
-            elif cmd in ["/exit", "/quit", "/q"]:
-                console.print("[yellow]Goodbye, Sir.[/yellow]")
-                break
-            else:
-                console.print(f"[red]Unknown command: {cmd}. Type /help for options.[/red]")
+            elif cmd == "/exit": break
+            else: console.print(f"[red]Unknown command: {cmd}. Type /help for options.[/red]")
 
         except KeyboardInterrupt:
             now = time.time()
             if now - last_ctrl_c < 2: 
-                console.print("\n[yellow]Secure shutdown initiated. Goodbye.[/yellow]")
-                break
+                console.print("\n[yellow]Secure shutdown initiated. Goodbye.[/yellow]"); break
             else:
                 console.print("\n[bold red]Press Ctrl+C again to exit JARVIS.[/bold red]")
                 last_ctrl_c = now
         except EOFError: break
 
-@app.callback(invoke_without_command=True)
-def main(ctx: typer.Context):
-    """JARVIS: Your local AI engineer."""
-    if ctx.invoked_subcommand is None:
-        if not CONFIG_FILE.exists():
-            console.print("[yellow]No configuration found. Starting setup...[/yellow]")
-            setup_wizard()
-        menu()
-
 @app.command()
-def setup():
-    """Run the interactive setup wizard."""
-    setup_wizard()
-
-@app.command()
-def chat(
-    q: str, 
-    model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, 
-    prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None
-):
+def chat(q: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
     """Chat with JARVIS."""
     provider = get_env_with_config("provider") or "ollama"
     console.print(Panel(f"JARVIS [bold cyan]({provider})[/bold cyan] [dim]prompt: {prompt or 'default'}[/dim]", border_style="cyan"))
@@ -188,26 +143,50 @@ def chat(
     console.print(Markdown(response))
 
 @app.command()
-def fix(
-    issue: str, 
-    model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, 
-    prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None
-):
+def forge(task: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None):
+    """Hardcore code synthesis for creating unprecedented solutions."""
+    forge_loop(task, model=model)
+
+@app.command()
+def decode(content: str):
+    """Universal decoder for scripts, languages, and coding paradigms."""
+    console.print(f"[bold cyan]Decoding:[/bold cyan] {content[:50]}...")
+    prompt = f"Decode and explain the following content. If it's a script, explain logic. If it's a language/font, translate. Provide maximum technical depth: {content}"
+    response = think("", prompt, prompt_name="nave_sovereign")
+    console.print(Markdown(response))
+
+@app.command()
+def lookup(request: str):
+    """Smart command discovery (Gemini-style)."""
+    prompt = f"The user wants to perform this action: {request}. Suggest the best shell command or JARVIS command to use."
+    response = think("", prompt)
+    console.print(Panel(Markdown(response), title="Command Discovery"))
+
+@app.command()
+def hardware_menu():
+    """Manage and probe physical ports and USB devices."""
+    from tools.hardware import get_hardware_summary, list_usb_devices, probe_ports
+    while True:
+        console.print(get_hardware_summary())
+        console.print("\n[1] List USB Details | [2] Full System Probe | [b] Back")
+        choice = Prompt.ask("Choice", choices=["1", "2", "b"], default="b")
+        if choice == "1": console.print(Panel(list_usb_devices(), title="USB Diagnostics"))
+        elif choice == "2": console.print(Panel(probe_ports(), title="System Port Probe"))
+        else: break
+
+@app.command()
+def fix(issue: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
     """Autonomous debug loop."""
     debug_loop(issue, model=model, prompt=prompt)
 
 @app.command()
-def analyze_file(
-    path: str, 
-    model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, 
-    prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None
-):
+def analyze_file(path: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
     """Deeply analyze a single file."""
     if not os.path.exists(path):
         console.print(f"[red]Error: File not found:[/red] {path}"); return
     with open(path, 'r') as f: content = f.read()
     console.print(f"[bold cyan]Analyzing file:[/bold cyan] {path}...")
-    response = think(f"File Path: {path}\nFile Content:\n{content}", "Analyze this file for bugs, security issues, and performance improvements.", model=model, prompt_name=prompt)
+    response = think(f"File Path: {path}\nFile Content:\n{content}", "Analyze for bugs and improvements.", model=model, prompt_name=prompt)
     console.print(Markdown(response))
 
 @app.command()
@@ -219,229 +198,87 @@ def locate(name: str, root: str = "/"):
     console.print(Panel(results, title=f"Locate Results: {name}"))
 
 @app.command()
-def undo(path: str):
-    """Rollback last edit."""
-    from tools.editor import undo_last_edit
-    res = undo_last_edit(path)
-    if "Error" in res: console.print(f"[red]{res}[/red]")
-    else: console.print(f"[green]{res}[/green]")
-
-@app.command()
-def dashboard():
-    """Launch multi-window live dashboard."""
-    from core.dashboard import Dashboard
-    Dashboard().run()
-
-@app.command()
-def focus(path: str):
-    """Set working context."""
-    if os.path.exists(path): console.print(Panel(f"[green]Focus successfully set to:[/green]\n{os.path.abspath(path)}", border_style="green"))
-    else: console.print(f"[red]Error: Path does not exist:[/red] {path}")
-
-@app.command()
-def troubleshoot(
-    command: str, 
-    model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, 
-    prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None
-):
+def troubleshoot(command: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
     """Autonomous troubleshooting."""
     troubleshoot_loop(command, model=model, prompt=prompt)
 
 @app.command()
+def undo(path: str):
+    """Rollback last edit."""
+    from tools.editor import undo_last_edit
+    res = undo_last_edit(path); console.print(f"[green]{res}[/green]")
+
+@app.command()
+def dashboard():
+    """Launch multi-window live dashboard."""
+    from core.dashboard import Dashboard; Dashboard().run()
+
+@app.command()
+def focus(path: str):
+    """Set working context."""
+    if os.path.exists(path): console.print(Panel(f"[green]Focus set to:[/green] {os.path.abspath(path)}", border_style="green"))
+    else: console.print(f"[red]Error: Path does not exist:[/red] {path}")
+
+@app.command()
 def voice():
-    """Voice control."""
-    from voice.voice import run_voice
-    run_voice()
+    from voice.voice import run_voice; run_voice()
 
 @app.command()
 def watch():
-    """Proactive monitoring."""
-    from watcher.monitor import start_monitor
-    start_monitor()
+    from watcher.monitor import start_monitor; start_monitor()
 
 @app.command()
-def config():
-    """Show configuration."""
-    menus.config_menu()
+def config(): menus.config_menu()
 
 @app.command()
 def analyze(path: str = "."):
-    """Project health analytics."""
     from tools.analytics import project_summary
-    console.print(f"[bold cyan]Analyzing project at {path}...[/bold cyan]")
     summary = project_summary(path)
-    table = Table(title="Project Health Analytics", border_style="cyan")
-    table.add_column("Metric", style="white"); table.add_column("Value", style="green")
-    table.add_row("Total Files", str(summary["total_files"]))
-    table.add_row("Total Lines (Python)", str(summary["total_lines"]))
-    for lang, count in summary["languages"].items(): table.add_row(f"Language ({lang})", str(count))
+    table = Table(title="Health Stats", border_style="cyan")
+    table.add_row("Files", str(summary["total_files"])); table.add_row("Lines", str(summary["total_lines"]))
     console.print(table)
-    if summary["hotspots"]:
-        console.print("\n[bold red]Complexity Hotspots (Refactor Recommended):[/bold red]")
-        for hs in summary["hotspots"]: console.print(f"- {hs['path']} (Score: {hs['score']})")
 
 @app.command()
 def github(action: str, repo: str, title: str = "", body: str = "", head: str = "", base: str = "main"):
-    """GitHub actions."""
     from tools.github import github_tool
     if action == "info": res = github_tool.get_repo_info(repo)
     elif action == "issue": res = github_tool.create_issue(repo, title, body)
-    elif action == "create_pr": res = github_tool.create_pr(repo, title, body, head, base)
-    elif action == "list_prs": res = github_tool.list_pull_requests(repo)
     else: res = "Unknown action."
     console.print(Panel(str(res), title=f"GitHub Result: {action}"))
 
 @app.command()
 def memory(action: str = "stats", q: str = ""):
-    """Manage vector memory."""
     from memory.vector import get_stats, search, clear
-    if action == "stats":
-        stats = get_stats()
-        console.print(Panel(f"Total Memories: [bold green]{stats['count']}[/bold green]", title="Memory Stats"))
+    if action == "stats": console.print(Panel(f"Total Memories: {get_stats()['count']}"))
     elif action == "search":
-        results = search(q)
-        if results: console.print(Panel("\n".join([f"- {r}" for r in results]), title=f"Search: {q}"))
-        else: console.print("[yellow]No relevant memories found.[/yellow]")
+        res = search(q)
+        if res: console.print(Panel("\n".join(res)))
     elif action == "clear":
-        if Confirm.ask("Are you sure you want to wipe all JARVIS memories?"):
-            console.print(f"[green]{clear()}[/green]")
-
-@app.command()
-def personality(type: str):
-    """Set behavior profile."""
-    config = load_config()
-    if type in ["professional", "sarcastic", "concise", "mentor"]:
-        config["personality"] = type
-        save_config(config)
-        console.print(f"[green]Personality set to {type.capitalize()}[/green]")
-    else: console.print("[red]Invalid type.[/red]")
-
-@app.command()
-def models(provider: str, model: str):
-    """Directly set LLM."""
-    config = load_config()
-    config["provider"] = provider.lower()
-    config["jarvis_model"] = model
-    save_config(config)
-    console.print(f"[green]Set to {provider.upper()} ({model})[/green]")
-
-@app.command()
-def prompts(action: str = "list", name: str = "", text: str = ""):
-    """Manage prompts."""
-    from core.prompts import list_prompts, save_prompt, delete_prompt
-    if action == "list": console.print(list_prompts())
-    elif action == "add": console.print(save_prompt(name, text))
-    elif action == "delete": console.print(delete_prompt(name))
-    elif action == "set":
-        config = load_config()
-        config["active_prompt"] = name
-        save_config(config)
-        console.print(f"Active set to {name}")
-
-@app.command()
-def free_keys():
-    """Free API keys links."""
-    info = "# 🎁 Get Started for Free\n1. [Gemini Flash](https://aistudio.google.com/)\n2. [Mistral](https://console.mistral.ai/)\n3. [NVIDIA](https://build.nvidia.com/)\n4. [Ollama](https://ollama.com/)"
-    console.print(Panel(Markdown(info), title="Free Tier Automation"))
-
-@app.command()
-def cloud(platform: str, action: str = "list", path: str = ""):
-    """Manage cloud storage."""
-    from tools.cloud import list_dropbox, list_gdrive, list_icloud
-    console.print(f"[bold cyan]Accessing {platform.upper()}...[/bold cyan]")
-    if platform == "dropbox": res = list_dropbox(path)
-    elif platform == "gdrive": res = list_gdrive()
-    elif platform == "icloud": res = list_icloud(path)
-    else: res = "Unknown platform."
-    console.print(Panel(str(res), title=f"Cloud Result: {platform}"))
+        if Confirm.ask("Clear all?"): console.print(f"[green]{clear()}[/green]")
 
 @app.command()
 def run_doctor():
-    """Comprehensive system diagnosis and auto-repair."""
-    console.print(Panel("👨‍⚕️ [bold cyan]JARVIS DOCTOR[/bold cyan]", border_style="cyan"))
-    
-    # 1. Dependency check
     from core.deps import ensure_all
-    console.print("[dim]Checking dependencies...[/dim]")
     ensure_all()
-    
-    # 2. Health check
     results = check_system_health()
-    errors = display_health_report(results)
-    if errors:
-        auto_repair_workspace(results)
-    
-    # 3. Update check
-    from core.update import check_for_updates
-    latest = check_for_updates()
-    if latest:
-        console.print(f"[yellow]Update available: {latest}[/yellow]")
-    
-    console.print("[green]System diagnosis complete.[/green]")
+    display_health_report(results)
 
 @app.command()
 def ai_git(task: str):
-    """AI-powered git management."""
-    console.print(f"[bold cyan]AI-Git:[/bold cyan] {task}")
-    prompt = f"Perform this git task: {task}. Use the SHELL tool. If it's a commit, generate a good message based on changes."
-    response = think("", prompt)
-    console.print(Markdown(response))
+    prompt = f"Perform git task: {task}"
+    response = think("", prompt); console.print(Markdown(response))
 
 @app.command()
 def init():
-    """Initialize project."""
     if os.path.exists("JARVIS.md"): console.print("[yellow]Already exists.[/yellow]")
     else:
-        with open("JARVIS.md", "w") as f: f.write("# JARVIS Project Instructions\n\n- Define rules here.")
+        with open("JARVIS.md", "w") as f: f.write("# JARVIS Rules")
         console.print("[green]Created JARVIS.md[/green]")
 
 def show_model_status():
     provider_obj = get_provider()
     p_name = get_env_with_config("provider") or "ollama"
-    model_name = provider_obj.model
-    
-    # Real-world quota mappings for better user awareness
-    quotas = {
-        "gemini": "1,500 requests/day (Free Tier - AI Studio)",
-        "openai": "Usage-based (Check platform.openai.com)",
-        "claude": "Usage-based (Check console.anthropic.com)",
-        "grok": "Beta Access (Check x.ai)",
-        "ollama": "N/A (Unlimited Local)",
-        "lm_studio": "N/A (Unlimited Local)",
-        "nvidia": "Trial Credits / Enterprise"
-    }
-    
-    quota = quotas.get(p_name.lower(), "Check Provider Dashboard")
-    
-    status_info = f"""
-    [bold cyan]Active Brain:[/bold cyan] {p_name.upper()}
-    [bold cyan]Intelligence Model:[/bold cyan] {model_name}
-    [bold cyan]Resource Quota:[/bold cyan] {quota}
-    
-    [dim]Tip: Switch logic via '/models' or change personality via '/personality'[/dim]
-    """
-    console.print(Panel(status_info, title="[bold magenta]Model & Quota Status[/bold magenta]", border_style="magenta"))
-
-@app.command()
-def health():
-    """System health check."""
-    results = check_system_health()
-    errors_found = display_health_report(results)
-    if errors_found:
-        if Confirm.ask("[bold yellow]Issues detected in workspace. Attempt auto-repair?[/bold yellow]"):
-            auto_repair_workspace(results)
-
-@app.command()
-def upgrade():
-    """Upgrade JARVIS to the latest version."""
-    from core.update import manual_upgrade
-    manual_upgrade()
-
-@app.command()
-def nave(q: str):
-    """Nave AI Redundancy Loop Refinement."""
-    console.print(Panel(f"🚀 [bold cyan]Nave AI Redundancy Loop[/bold cyan]\nRefining: [dim]{q}[/dim]", border_style="cyan"))
-    result = run_nave_loop(q)
-    console.print(Markdown(result))
+    status_info = f"Provider: {p_name.upper()}\nModel: {provider_obj.model}"
+    console.print(Panel(status_info, title="Model Status", border_style="magenta"))
 
 if __name__ == "__main__": app()

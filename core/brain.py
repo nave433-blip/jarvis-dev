@@ -254,6 +254,7 @@ Available Tools:
 - NETWORK: action(scan, ports), ip, range (Discovery & Fing-style tools)
 - SSH: host, username, command, password, key (Remote server execution)
 - SERVER: action(ports, stats, kill), pid (Monitoring & Management)
+- HARDWARE: action(usb, probe) (Physical port & USB debugging)
 
 System Rules:
 {project_rules}
