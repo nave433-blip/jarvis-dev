@@ -7,7 +7,7 @@ from rich.console import Console
 console = Console()
 
 GITHUB_REPO = "nave433-blip/jarvis-dev"
-CURRENT_VERSION = "0.1.5"
+CURRENT_VERSION = "0.1.6"
 
 def check_for_updates():
     """Check GitHub for a newer version of JARVIS."""

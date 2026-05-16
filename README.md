@@ -1,4 +1,4 @@
-# JARVIS: The Ultimate Proactive AI Assistant (v0.1.5)
+# JARVIS: The Ultimate Proactive AI Assistant (v0.1.6)
 
 JARVIS is a senior software engineering assistant that runs locally on macOS, powered by Ollama. It combines voice commands, vector memory, and proactive file monitoring with a Gemini-inspired structured agent workflow.
 
