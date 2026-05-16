@@ -3,14 +3,117 @@ from core.brain import think
 from core.agent import debug_loop
 from voice.voice import run_voice
 from watcher.monitor import start_monitor
-from core.config import setup_wizard, get_env_with_config, CONFIG_FILE
+from core.config import setup_wizard, get_env_with_config, CONFIG_FILE, load_config
 import os
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
+from rich.table import Table
+from rich.live import Live
+from rich.layout import Layout
+from rich.prompt import Prompt
+from rich.align import Align
 
-app = typer.Typer()
+app = typer.Typer(help="🚀 JARVIS: The Ultimate Local AI Coding Assistant")
 console = Console()
+
+def display_welcome():
+    welcome_text = """
+    # JARVIS v1.0
+    The Senior Software Engineering Assistant
+    """
+    console.print(Panel(Markdown(welcome_text), style="bold blue", border_style="cyan"))
+
+def get_main_menu_table():
+    table = Table(show_header=False, box=None)
+    table.add_column("Command", style="cyan", justify="right")
+    table.add_column("Description", style="white")
+    
+    table.add_row("[1] Chat", "Ask JARVIS anything about your code")
+    table.add_row("[2] Fix", "Autonomous debugging and repair loop")
+    table.add_row("[3] Voice", "Control JARVIS with voice commands")
+    table.add_row("[4] Watch", "Proactive background file monitoring")
+    table.add_row("[5] Config", "View and edit settings")
+    table.add_row("[6] Init", "Setup JARVIS.md for the current project")
+    table.add_row("[h] Help", "Robust command documentation")
+    table.add_row("[q] Quit", "Exit the JARVIS CLI")
+    
+    return Panel(table, title="[bold white]Main Menu[/bold white]", border_style="blue", expand=False)
+
+@app.command()
+def menu():
+    """Launch the interactive graphical CLI menu."""
+    display_welcome()
+    while True:
+        console.print(Align.center(get_main_menu_table()))
+        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "h", "q"], default="1")
+        
+        if choice == "1":
+            q = Prompt.ask("What is your question?")
+            chat(q)
+        elif choice == "2":
+            issue = Prompt.ask("Describe the issue to fix")
+            fix(issue)
+        elif choice == "3":
+            voice()
+        elif choice == "4":
+            watch()
+        elif choice == "5":
+            config_menu()
+        elif choice == "6":
+            init()
+        elif choice == "h":
+            robust_help()
+        elif choice == "q":
+            console.print("[yellow]Goodbye, Sir.[/yellow]")
+            break
+
+def config_menu():
+    while True:
+        config_data = load_config()
+        table = Table(title="Current Configuration", show_header=True, header_style="bold magenta")
+        table.add_column("Setting", style="cyan")
+        table.add_column("Value", style="white")
+        
+        for k, v in config_data.items():
+            val = v if "api_key" not in k or not v else "****" + v[-4:]
+            table.add_row(k, str(val))
+        
+        console.print(table)
+        console.print("\n[1] Edit Config (Wizard) | [b] Back")
+        choice = Prompt.ask("Choice", choices=["1", "b"], default="b")
+        if choice == "1":
+            setup_wizard()
+        else:
+            break
+
+def robust_help():
+    help_md = """
+    # JARVIS Robust Help System
+    
+    ### 💬 Chat
+    Uses the configured LLM (Ollama, Gemini, Claude, or Grok) to answer technical questions. 
+    It has access to your project context if `SEARCH` and `READ` tools are invoked by the brain.
+    
+    ### 🔧 Fix
+    An autonomous agent loop. JARVIS will:
+    1. Research the issue using search tools.
+    2. Propose a strategy.
+    3. Execute changes using the `EDIT` tool.
+    4. Validate and repeat until resolved.
+    
+    ### 🎙 Voice
+    Hands-free control. JARVIS transcribes your speech and pipes it directly into the `Fix` or `Chat` engine.
+    
+    ### 👁 Watch
+    Monitors `.py` files in real-time. When a file is saved, JARVIS automatically analyzes the changes 
+    and stores the insights in its vector memory for future context.
+    
+    ### ⚙️ Config
+    Manage your LLM providers and API keys. Supports local Ollama and cloud-based giants.
+    """
+    console.print(Panel(Markdown(help_md), title="[bold green]System Documentation[/bold green]", border_style="green"))
+    input("\nPress Enter to return to menu...")
 
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context):
@@ -19,59 +122,44 @@ def main(ctx: typer.Context):
         if not CONFIG_FILE.exists():
             console.print("[yellow]No configuration found. Starting setup...[/yellow]")
             setup_wizard()
-        else:
-            console.print(ctx.get_help())
+        menu()
 
 @app.command()
 def setup():
-    """Run the interactive setup wizard to configure providers and API keys."""
+    """Run the interactive setup wizard."""
     setup_wizard()
 
 @app.command()
 def chat(q: str):
-    """Chat with JARVIS using the configured LLM provider."""
+    """Chat with JARVIS."""
     provider = get_env_with_config("provider") or "ollama"
-    console.print(f"[bold blue]JARVIS ({provider}):[/bold blue]")
+    console.print(Panel(f"JARVIS [bold blue]({provider})[/bold blue]", border_style="blue"))
     response = think("", q)
     console.print(Markdown(response))
 
 @app.command()
 def fix(issue: str):
-    """Start an autonomous debug loop to fix a reported issue."""
+    """Autonomous debug loop."""
     debug_loop(issue)
 
 @app.command()
 def voice():
-    """Control JARVIS using voice commands."""
+    """Voice control."""
     run_voice()
 
 @app.command()
 def watch():
-    """Start proactive monitoring of file changes."""
+    """Proactive monitoring."""
     start_monitor()
 
 @app.command()
 def config():
-    """Show current configuration and LLM provider."""
-    provider = get_env_with_config("provider") or "ollama"
-    model = get_env_with_config("jarvis_model") or "llama3"
-    
-    config_info = f"""
-    [bold]Config File:[/bold] {CONFIG_FILE}
-    
-    [bold]Current Provider:[/bold] {provider}
-    [bold]Model:[/bold] {model}
-    
-    [bold]API Key Status:[/bold]
-    - GEMINI_API_KEY: {"[green]Set[/green]" if get_env_with_config("gemini_api_key") else "[red]Missing[/red]"}
-    - ANTHROPIC_API_KEY: {"[green]Set[/green]" if get_env_with_config("anthropic_api_key") else "[red]Missing[/red]"}
-    - XAI_API_KEY: {"[green]Set[/green]" if get_env_with_config("xai_api_key") else "[red]Missing[/red]"}
-    """
-    console.print(Panel(config_info, title="JARVIS Configuration"))
+    """Show configuration."""
+    config_menu()
 
 @app.command()
 def init():
-    """Initialize a JARVIS.md file in the current directory."""
+    """Initialize project JARVIS.md."""
     if os.path.exists("JARVIS.md"):
         console.print("[yellow]JARVIS.md already exists.[/yellow]")
     else:
