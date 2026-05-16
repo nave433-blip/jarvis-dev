@@ -1,4 +1,5 @@
 import json
+import os
 from core.brain import think
 from tools.shell import run, run_simple
 from tools.search import grep, list_files, system_find
