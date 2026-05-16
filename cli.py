@@ -1,6 +1,6 @@
 import typer
 from core.brain import think
-from core.agent import debug_loop
+from core.agent import debug_loop, troubleshoot_loop
 from voice.voice import run_voice
 from watcher.monitor import start_monitor
 from core.config import setup_wizard, get_env_with_config, CONFIG_FILE, load_config
@@ -39,6 +39,7 @@ def get_main_menu_table():
     table.add_row("[8] Undo", "Rollback the last file edit")
     table.add_row("[9] Dashboard", "Multi-window live dashboard")
     table.add_row("[f] Focus", "Set the working context for JARVIS")
+    table.add_row("[t] Troubleshoot", "Run a command and automatically fix any errors")
     table.add_row("[h] Help", "Robust command documentation")
     table.add_row("[q] Quit", "Exit the JARVIS CLI")
     
@@ -76,6 +77,9 @@ def menu():
         elif choice == "f":
             path = Prompt.ask("Enter path to focus on", default=".")
             focus(path)
+        elif choice == "t":
+            cmd = Prompt.ask("Enter the command that is failing")
+            troubleshoot(cmd)
         elif choice == "h":
             robust_help()
         elif choice == "q":
@@ -130,6 +134,10 @@ def robust_help():
     ### 🎯 Focus
     Narrow JARVIS's scope to a specific file or directory. This ensures the agent prioritizes 
     the relevant context when performing analytics or debugging.
+
+    ### 🛠 Troubleshoot
+    Inspired by Warp's Agent Mode. Provide a command that is failing; JARVIS will run it, 
+    capture the error, and automatically enter a debug loop to fix the root cause.
     
     ### ⚙️ Config
     Manage your LLM providers and API keys. Supports local Ollama and cloud-based giants.
@@ -191,6 +199,11 @@ def focus(path: str):
         console.print(Panel(f"[green]Focus successfully set to:[/green]\n{os.path.abspath(path)}", border_style="green"))
     else:
         console.print(f"[red]Error: Path does not exist:[/red] {path}")
+
+@app.command()
+def troubleshoot(command: str, model: Optional[str] = typer.Option(None, "--model", "-m", help="Override default LLM model")):
+    """Run a command and automatically troubleshoot and fix any errors."""
+    troubleshoot_loop(command, model=model)
 
 @app.command()
 def voice():

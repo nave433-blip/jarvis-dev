@@ -1,11 +1,15 @@
 import json
 from core.brain import think
-from tools.shell import run
+from tools.shell import run, run_simple
 from tools.search import grep, list_files
 from tools.editor import replace_in_file, read_section
 from tools.installer import brew_install, git_install, curl_install
 from tools.github import github_tool
 from tools.analytics import analyze_complexity, project_summary
+from rich.console import Console
+from rich.panel import Panel
+
+console = Console()
 
 def dispatch_tool(line, next_line):
     if not line.startswith("TOOL:"): return None
@@ -23,7 +27,7 @@ def dispatch_tool(line, next_line):
         elif tool_name == "EDIT":
             return replace_in_file(args["path"], args["old"], args["new"])
         elif tool_name == "SHELL":
-            return run(args["command"])
+            return run_simple(args["command"])
         elif tool_name == "INSTALLER":
             method = args.get("method")
             if method == "brew": return brew_install(args["package"])
@@ -71,3 +75,25 @@ def debug_loop(issue, model=None):
             if ok.lower() == "y":
                 return
             context += f"\nUser feedback: Please continue."
+
+def troubleshoot_loop(command, model=None):
+    console.print(f"[bold blue]Troubleshooting command:[/bold blue] {command}")
+    
+    # Execute the failing command
+    result = run(command)
+    
+    if result.get("return_code") == 0:
+        console.print("[green]Command succeeded on first try. No troubleshooting needed.[/green]")
+        return
+    
+    error_context = f"""
+    COMMAND FAILED: {command}
+    RETURN CODE: {result.get('return_code')}
+    STDERR: {result.get('stderr')}
+    STDOUT: {result.get('stdout')}
+    """
+    
+    console.print(Panel(error_context, title="Error Captured", border_style="red"))
+    
+    # Pass to the debug loop for fixing
+    debug_loop(f"Fix the error caused by this command: {command}. Error context: {error_context}", model=model)
