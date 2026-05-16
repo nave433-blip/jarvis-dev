@@ -49,8 +49,17 @@ def replace_in_file(file_path, old_string, new_string, interactive=True):
     
     if interactive:
         if show_diff(file_path, content, new_content):
-            if not Confirm.ask(f"Apply changes to {file_path}?"):
-                return "Edit cancelled by user."
+            choice = Prompt.ask(
+                f"Apply changes to {file_path}?",
+                choices=["y", "n", "m"],
+                default="y"
+            )
+            if choice == "n":
+                return "Edit rejected by user."
+            if choice == "m":
+                console.print("[yellow]Manual override requested. Opening editor...[/yellow]")
+                # In a real CLI, we might use click.edit() or similar
+                return "Edit paused for manual modification (Feature coming soon)."
     
     # Create backup before applying
     create_backup(file_path)

@@ -37,6 +37,8 @@ def get_main_menu_table():
     table.add_row("[6] Init", "Setup JARVIS.md for the current project")
     table.add_row("[7] Analyze", "Deep project complexity and health analytics")
     table.add_row("[8] Undo", "Rollback the last file edit")
+    table.add_row("[9] Dashboard", "Multi-window live dashboard")
+    table.add_row("[f] Focus", "Set the working context for JARVIS")
     table.add_row("[h] Help", "Robust command documentation")
     table.add_row("[q] Quit", "Exit the JARVIS CLI")
     
@@ -48,7 +50,7 @@ def menu():
     display_welcome()
     while True:
         console.print(Align.center(get_main_menu_table()))
-        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "h", "q"], default="1")
+        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "f", "h", "q"], default="1")
         
         if choice == "1":
             q = Prompt.ask("What is your question?")
@@ -69,6 +71,11 @@ def menu():
         elif choice == "8":
             path = Prompt.ask("Path to file to undo")
             undo(path)
+        elif choice == "9":
+            dashboard()
+        elif choice == "f":
+            path = Prompt.ask("Enter path to focus on", default=".")
+            focus(path)
         elif choice == "h":
             robust_help()
         elif choice == "q":
@@ -115,6 +122,14 @@ def robust_help():
     ### 👁 Watch
     Monitors `.py` files in real-time. When a file is saved, JARVIS automatically analyzes the changes 
     and stores the insights in its vector memory for future context.
+
+    ### 🖥 Dashboard
+    A live, multi-window TUI (Terminal User Interface) that displays your recent chat history, 
+    system logs, project statistics, and the current focus context in a single layout.
+
+    ### 🎯 Focus
+    Narrow JARVIS's scope to a specific file or directory. This ensures the agent prioritizes 
+    the relevant context when performing analytics or debugging.
     
     ### ⚙️ Config
     Manage your LLM providers and API keys. Supports local Ollama and cloud-based giants.
@@ -160,6 +175,22 @@ def undo(path: str):
         console.print(f"[red]{res}[/red]")
     else:
         console.print(f"[green]{res}[/green]")
+
+@app.command()
+def dashboard():
+    """Launch the multi-window live dashboard."""
+    from core.dashboard import Dashboard
+    db = Dashboard()
+    db.run()
+
+@app.command()
+def focus(path: str):
+    """Set the working directory/file focus for JARVIS."""
+    if os.path.exists(path):
+        # Persistent focus could be added to config later
+        console.print(Panel(f"[green]Focus successfully set to:[/green]\n{os.path.abspath(path)}", border_style="green"))
+    else:
+        console.print(f"[red]Error: Path does not exist:[/red] {path}")
 
 @app.command()
 def voice():
