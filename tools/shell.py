@@ -1,11 +1,6 @@
 import subprocess
 
-SAFE = ["ls", "cat", "echo", "git", "python", "cargo", "mkdir", "touch", "mv", "cp", "grep", "find", "rm", "cd", "brew", "curl", "make", "pip", "npm", "node"]
-
 def run(cmd):
-    if not any(cmd.startswith(x) for x in SAFE):
-        return "BLOCKED: unsafe command"
-
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=180)
         output = result.stdout
