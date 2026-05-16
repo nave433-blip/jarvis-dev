@@ -1,0 +1,4 @@
+# JARVIS Assistant Release Checksums (v0.1.4)
+# Generated on: 2026-05-16
+
+a3e5bf2d70ce426c0e86f1c98b4a5e717621da484c12f08f56f86b210e8f3d8d  jarvis-cli-src.zip
