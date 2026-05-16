@@ -31,7 +31,7 @@ def scan_network():
     local_ip = get_local_ip()
     prefix = ".".join(local_ip.split(".")[:-1]) + "."
     
-    console.print(f"[bold blue]Scanning local network subnet: {prefix}0/24[/bold blue]")
+    console.print(f"[bold cyan]Scanning local network subnet: {prefix}0/24[/bold cyan]")
     
     table = Table(title="Network Discovery", border_style="cyan")
     table.add_column("IP Address", style="cyan")
@@ -52,7 +52,7 @@ def scan_network():
 
 def scan_ports(ip, port_range=(1, 1024)):
     """Scan for open ports on a target IP."""
-    console.print(f"[bold blue]Scanning ports on {ip} ({port_range[0]}-{port_range[1]})...[/bold blue]")
+    console.print(f"[bold cyan]Scanning ports on {ip} ({port_range[0]}-{port_range[1]})...[/bold cyan]")
     
     open_ports = []
     for port in range(port_range[0], port_range[1] + 1):

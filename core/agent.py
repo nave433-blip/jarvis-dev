@@ -103,7 +103,7 @@ def debug_loop(issue, model=None, prompt=None):
             context += f"\nUser feedback: Please continue."
 
 def troubleshoot_loop(command, model=None, prompt=None):
-    console.print(f"[bold blue]Troubleshooting command:[/bold blue] {command}")
+    console.print(f"[bold cyan]Troubleshooting command:[/bold cyan] {command}")
     
     # Execute the failing command
     result = run(command)

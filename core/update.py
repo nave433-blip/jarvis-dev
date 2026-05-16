@@ -31,17 +31,17 @@ def apply_update():
     console.print("[bold blue]🚀 A new version of JARVIS is available![/bold blue]")
     console.print("[dim]Starting automatic update and self-repair sequence...[/dim]")
     
-    # 1. Create a simple backup (copy current dir to .bak)
-    # In a real environment, we'd use git tags/commits for rollbacks
+    # Get the directory where the JARVIS source lives
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
     try:
         # Pull latest code
-        console.print("[yellow]Pulling latest changes from GitHub...[/yellow]")
-        subprocess.check_call(["git", "pull", "origin", "main"])
+        console.print(f"[yellow]Pulling latest changes from GitHub in {base_dir}...[/yellow]")
+        subprocess.check_call(["git", "-C", base_dir, "pull", "origin", "main"])
         
         # Re-install dependencies
         console.print("[yellow]Refreshing dependencies...[/yellow]")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."])
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", base_dir])
         
         console.print("[bold green]✅ Update successful! Please restart JARVIS.[/bold green]")
         return True
@@ -49,7 +49,7 @@ def apply_update():
         console.print(f"[bold red]❌ Update failed: {e}[/bold red]")
         console.print("[bold yellow]Attempting auto-rollback...[/bold yellow]")
         # Rollback via git
-        subprocess.run(["git", "reset", "--hard", "HEAD@{1}"])
+        subprocess.run(["git", "-C", base_dir, "reset", "--hard", "HEAD@{1}"])
         return False
 
 def auto_update_check():

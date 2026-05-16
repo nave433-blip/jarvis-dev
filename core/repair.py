@@ -42,7 +42,7 @@ def self_repair_hook(exctype, value, tb):
         Your task is to provide a fix using the EDIT tool.
         """
         
-        console.print("[bold blue]Analyzing crash and generating patch...[/bold blue]")
+        console.print("[bold cyan]Analyzing crash and generating patch...[/bold cyan]")
         response = think("", repair_prompt)
         
         # Look for TOOL: EDIT in response
@@ -56,7 +56,7 @@ def self_repair_hook(exctype, value, tb):
                     args = json.loads(lines[i+1].replace("ARGS:", "").strip())
                     res = replace_in_file(args["path"], args["old"], args["new"])
                     console.print(f"[bold green]{res}[/bold green]")
-                    console.print("\n[bold blue]Please restart JARVIS to verify the fix.[/bold blue]")
+                    console.print("\n[bold cyan]Please restart JARVIS to verify the fix.[/bold cyan]")
                     return
         else:
             console.print("[red]Could not determine an automated fix.[/red]")
@@ -77,7 +77,7 @@ def self_repair_hook(exctype, value, tb):
         {error_msg}
         ```
         """
-        console.print("[bold blue]Opening GitHub issue...[/bold blue]")
+        console.print("[bold cyan]Opening GitHub issue...[/bold cyan]")
         res = github_tool.create_issue("nave433-blip/jarvis-dev", title, body)
         if "Error" not in str(res):
             console.print(f"[green]Issue successfully created: {res.get('html_url')}[/green]")

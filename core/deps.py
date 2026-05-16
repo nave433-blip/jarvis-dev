@@ -1,4 +1,5 @@
 import sys
+import os
 import subprocess
 import importlib.util
 import shutil
@@ -47,6 +48,14 @@ def check_python_deps():
 def check_system_deps():
     # Check for portaudio on macOS (required for sounddevice/voice)
     if sys.platform == "darwin":
+        # Proactive check for portaudio to avoid broken Homebrew calls
+        has_portaudio = os.path.exists("/usr/local/include/portaudio.h") or \
+                        os.path.exists("/opt/homebrew/include/portaudio.h") or \
+                        subprocess.run(["pkg-config", "--exists", "portaudio-2.0"], capture_output=True).returncode == 0
+        
+        if has_portaudio:
+            return True
+
         if not shutil.which("brew"):
             console.print("[yellow]Warning: Homebrew not found. System dependency checks skipped.[/yellow]")
             return True

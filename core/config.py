@@ -1,5 +1,6 @@
 import json
 import os
+import requests
 from pathlib import Path
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
@@ -44,6 +45,18 @@ def save_config(config):
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f, indent=4)
 
+def detect_ollama():
+    """Attempt to auto-detect a local Ollama instance."""
+    hosts = ["http://localhost:11434", "http://127.0.0.1:11434"]
+    for host in hosts:
+        try:
+            r = requests.get(f"{host}/api/tags", timeout=1)
+            if r.status_code == 200:
+                return host
+        except:
+            continue
+    return None
+
 def setup_wizard():
     console.print("[bold cyan]Welcome to JARVIS Setup Wizard[/bold cyan]\n")
     
@@ -51,13 +64,18 @@ def setup_wizard():
     
     provider = Prompt.ask(
         "Select your default LLM provider",
-        choices=["ollama", "gemini", "claude", "grok"],
+        choices=["ollama", "gemini", "claude", "grok", "openai"],
         default=config["provider"]
     )
     config["provider"] = provider
 
     if provider == "ollama":
-        config["ollama_host"] = Prompt.ask("Ollama Host URL", default=config["ollama_host"])
+        auto_host = detect_ollama()
+        if auto_host:
+            console.print(f"[green]Detected local Ollama instance at {auto_host}[/green]")
+            config["ollama_host"] = auto_host
+        else:
+            config["ollama_host"] = Prompt.ask("Ollama Host URL", default=config["ollama_host"])
         config["jarvis_model"] = Prompt.ask("Ollama Model Name", default=config["jarvis_model"])
     
     if Confirm.ask("Would you like to configure API keys now?"):
