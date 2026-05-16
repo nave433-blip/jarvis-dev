@@ -47,68 +47,61 @@ def save_config(config):
         json.dump(config, f, indent=4)
 
 def detect_ollama():
-    """Attempt to auto-detect a local Ollama instance."""
     hosts = ["http://localhost:11434", "http://127.0.0.1:11434"]
     for host in hosts:
         try:
             r = requests.get(f"{host}/api/tags", timeout=1)
-            if r.status_code == 200:
-                return host
-        except:
-            continue
+            if r.status_code == 200: return host
+        except: continue
     return None
 
-def smart_input(prompt, default_val, key_name=None, auto_detect_func=None):
-    """Ask if user knows the info; if not, try to auto-detect or use default."""
-    if Confirm.ask(f"Do you have the specific {prompt} details?"):
-        return Prompt.ask(f"Enter {prompt}", default=default_val)
+def smart_input(label, default_val, auto_detect_func=None):
+    """Smarter input that offers auto-detection if the user is unsure."""
+    if Confirm.ask(f"Do you have the specific {label} details (e.g. URL or Key)?"):
+        return Prompt.ask(f"Enter {label}", default=default_val)
     
     if auto_detect_func:
-        console.print(f"[dim]Attempting to auto-configure {prompt}...[/dim]")
+        console.print(f"[dim]Attempting to auto-configure {label}...[/dim]")
         detected = auto_detect_func()
         if detected:
             console.print(f"[green]✅ Auto-detected: {detected}[/green]")
             return detected
-        
-    console.print(f"[yellow]⚠️ Could not auto-detect {prompt}. Using default: {default_val}[/yellow]")
+            
+    console.print(f"[yellow]⚠️ No specific {label} details provided. Using default/empty.[/yellow]")
     return default_val
 
 def setup_wizard():
     console.print("[bold cyan]Welcome to JARVIS Setup Wizard[/bold cyan]\n")
-    
     config = load_config()
     
-    provider = Prompt.ask(
-        "Select your default LLM provider",
-        choices=["ollama", "gemini", "claude", "grok", "openai"],
+    config["provider"] = Prompt.ask(
+        "Select your primary LLM provider",
+        choices=["ollama", "gemini", "claude", "openai", "grok", "mistral", "nvidia"],
         default=config["provider"]
     )
-    config["provider"] = provider
 
-    if provider == "ollama":
+    if config["provider"] == "ollama":
         config["ollama_host"] = smart_input("Ollama Host URL", config["ollama_host"], auto_detect_func=detect_ollama)
         config["jarvis_model"] = Prompt.ask("Ollama Model Name", default=config["jarvis_model"])
     
-    if Confirm.ask("Would you like to configure API keys now?"):
-        config["gemini_api_key"] = Prompt.ask("Gemini API Key", default=config["gemini_api_key"], password=True)
-        config["anthropic_api_key"] = Prompt.ask("Anthropic API Key", default=config["anthropic_api_key"], password=True)
-        config["openai_api_key"] = Prompt.ask("OpenAI API Key", default=config["openai_api_key"], password=True)
-        config["mistral_api_key"] = Prompt.ask("Mistral API Key", default=config["mistral_api_key"], password=True)
-        config["nvidia_api_key"] = Prompt.ask("NVIDIA NIM API Key", default=config["nvidia_api_key"], password=True)
-        config["xai_api_key"] = Prompt.ask("XAI (Grok) API Key", default=config["xai_api_key"], password=True)
-        config["github_token"] = Prompt.ask("GitHub Personal Access Token", default=config["github_token"], password=True)
+    if Confirm.ask("Would you like to configure Cloud API Keys now?"):
+        for key in ["gemini_api_key", "openai_api_key", "anthropic_api_key", "xai_api_key", "mistral_api_key", "nvidia_api_key"]:
+            name = key.replace("_", " ").title()
+            if Confirm.ask(f"Configure {name}?"):
+                config[key] = Prompt.ask(f"Enter {name}", default=config.get(key, ""), password=True)
 
-    config["self_repair"] = Confirm.ask("Enable autonomous self-repair (JARVIS will fix its own crashes)?", default=config.get("self_repair", False))
+    if Confirm.ask("Configure external integrations (GitHub, Cloud Storage)?"):
+        config["github_token"] = Prompt.ask("GitHub Personal Access Token", default=config.get("github_token", ""), password=True)
+        config["dropbox_token"] = Prompt.ask("Dropbox API Token", default=config.get("dropbox_token", ""), password=True)
+        config["gdrive_token"] = Prompt.ask("Google Drive API Token", default=config.get("gdrive_token", ""), password=True)
+
+    config["self_repair"] = Confirm.ask("Enable autonomous self-repair?", default=config.get("self_repair", False))
 
     save_config(config)
     console.print("\n[green]Configuration saved successfully.[/green]")
 
 def get_env_with_config(key):
-    """Get value from environment variable or fallback to config file."""
     config = load_config()
     env_val = os.getenv(key.upper())
-    if env_val:
-        return env_val
-    
-    config_key = key.lower()
-    return config.get(config_key, "")
+    if env_val: return env_val
+    return config.get(key.lower(), "")

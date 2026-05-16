@@ -50,6 +50,13 @@ COMMANDS = [
     "/git", "/nave", "/sync", "/upgrade", "/exit"
 ]
 
+def get_bottom_toolbar():
+    cwd = os.getcwd()
+    config = load_config()
+    model = config.get("jarvis_model", "unknown")
+    provider = config.get("provider", "ollama")
+    return f" [cyan]📁 {cwd}[/cyan] | [magenta]🧠 {provider.upper()} ({model})[/magenta]"
+
 @app.command()
 def menu():
     """Launch the interactive Gemini-style slash command menu."""
@@ -61,15 +68,19 @@ def menu():
     @kb.add('escape')
     def _(event): event.app.exit(result="/exit")
 
-    session = PromptSession(completer=completer, key_bindings=kb)
-    style = Style.from_dict({'prompt': 'ansicyan bold'})
+    session = PromptSession(
+        completer=completer, 
+        key_bindings=kb,
+        bottom_toolbar=get_bottom_toolbar
+    )
+    style = Style.from_dict({
+        'prompt': 'ansicyan bold',
+        'bottom-toolbar': 'bg:#1e1e1e #888888',
+    })
     last_ctrl_c = 0
 
     while True:
         try:
-            cwd = os.getcwd()
-            console.print(Panel(f"📁 [bold white]Workspace:[/bold white] [cyan]{cwd}[/cyan]", border_style="dim", expand=False))
-            
             text = session.prompt('JARVIS > ', style=style).strip()
             last_ctrl_c = 0 
             if not text: continue
@@ -103,8 +114,6 @@ def menu():
             # Standard Slash Command Processing
             parts = text.split(" ", 2)
             cmd = parts[0].lower()
-            
-            # Handle aliases for slash commands too
             if cmd == "/update": cmd = "/upgrade"
 
             prompt_name = parts[1][1:] if len(parts) > 1 and parts[1].startswith("@") else None
@@ -165,6 +174,20 @@ def menu():
                 console.print("\n[bold red]Press Ctrl+C again to exit JARVIS.[/bold red]")
                 last_ctrl_c = now
         except EOFError: break
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context):
+    """JARVIS: Your local AI engineer."""
+    if ctx.invoked_subcommand is None:
+        if not CONFIG_FILE.exists():
+            console.print("[yellow]No configuration found. Starting setup...[/yellow]")
+            setup_wizard()
+        menu()
+
+@app.command()
+def setup():
+    """Run the interactive setup wizard."""
+    setup_wizard()
 
 @app.command()
 def chat(q: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
