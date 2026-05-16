@@ -38,6 +38,7 @@ def get_main_menu_table():
     table.add_row("[7] Analyze", "Deep project complexity and health analytics")
     table.add_row("[8] Undo", "Rollback the last file edit")
     table.add_row("[9] Dashboard", "Multi-window live dashboard")
+    table.add_row("[m] Memory", "Manage and clear vector memory")
     table.add_row("[f] Focus", "Set the working context for JARVIS")
     table.add_row("[t] Troubleshoot", "Run a command and automatically fix any errors")
     table.add_row("[h] Help", "Robust command documentation")
@@ -51,7 +52,7 @@ def menu():
     display_welcome()
     while True:
         console.print(Align.center(get_main_menu_table()))
-        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "f", "h", "q"], default="1")
+        choice = Prompt.ask("\n[bold]Select an option[/bold]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "m", "f", "t", "h", "q"], default="1")
         
         if choice == "1":
             q = Prompt.ask("What is your question?")
@@ -74,6 +75,8 @@ def menu():
             undo(path)
         elif choice == "9":
             dashboard()
+        elif choice == "m":
+            memory_menu()
         elif choice == "f":
             path = Prompt.ask("Enter path to focus on", default=".")
             focus(path)
@@ -134,6 +137,10 @@ def robust_help():
     ### 🎯 Focus
     Narrow JARVIS's scope to a specific file or directory. This ensures the agent prioritizes 
     the relevant context when performing analytics or debugging.
+
+    ### 🧠 Memory
+    Manage your vector memory. View how many insights JARVIS has stored, search through them, 
+    or wipe the slate clean if you want to start fresh.
 
     ### 🛠 Troubleshoot
     Inspired by Warp's Agent Mode. Provide a command that is failing; JARVIS will run it, 
@@ -264,6 +271,41 @@ def github(action: str, repo: str, title: str = "", body: str = "", head: str = 
         res = "Unknown GitHub action."
     
     console.print(Panel(str(res), title=f"GitHub Result: {action}"))
+
+@app.command()
+def memory(action: str = "stats", q: str = ""):
+    """Manage JARVIS's vector memory (stats, search, clear)."""
+    from memory.vector import get_stats, search, clear
+    if action == "stats":
+        stats = get_stats()
+        console.print(Panel(f"Total Memories: [bold green]{stats['count']}[/bold green]", title="Memory Stats"))
+    elif action == "search":
+        results = search(q)
+        if results:
+            console.print(Panel("\n".join([f"- {r}" for r in results]), title=f"Search Results: {q}"))
+        else:
+            console.print("[yellow]No relevant memories found.[/yellow]")
+    elif action == "clear":
+        from rich.prompt import Confirm
+        if Confirm.ask("Are you sure you want to wipe all JARVIS memories?"):
+            res = clear()
+            console.print(f"[green]{res}[/green]")
+
+def memory_menu():
+    from memory.vector import get_stats
+    while True:
+        stats = get_stats()
+        console.print(Panel(f"Stored Memories: [bold cyan]{stats['count']}[/bold cyan]", title="Memory Management"))
+        console.print("\n[1] Search | [2] Clear All | [b] Back")
+        choice = Prompt.ask("Choice", choices=["1", "2", "b"], default="b")
+        if choice == "1":
+            q = Prompt.ask("Search query")
+            memory(action="search", q=q)
+            input("\nPress Enter to continue...")
+        elif choice == "2":
+            memory(action="clear")
+        else:
+            break
 
 @app.command()
 def init():

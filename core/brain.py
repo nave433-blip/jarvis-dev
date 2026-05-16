@@ -151,5 +151,5 @@ ARGS: <JSON>
         # Fallback or Error reporting
         return str(response)
         
-    add(f"Task: {task} | Response: {response[:200]}...")
+    add(f"Task: {task}\nResult: {response}", metadata="Conversation")
     return response
