@@ -122,6 +122,7 @@ def interactive():
             
             # --- Use Advanced Handler ---
             res = handler.handle(text)
+            ui_hint = res.get("ui")
             
             if res.get("type") == "internal":
                 cmd = res["command"]
@@ -136,7 +137,7 @@ def interactive():
                 
                 # --- Routing Table ---
                 if cmd == "/chat": chat(args or Prompt.ask("Question"), prompt=prompt_name)
-                elif cmd == "/fix": fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name)
+                elif cmd == "/fix": fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name, ui_hint=ui_hint)
                 elif cmd == "/plan": plan(args or Prompt.ask("Task for strategy"))
                 elif cmd == "/forge": forge(args or Prompt.ask("Task to forge"))
                 elif cmd == "/decode": decode(args or Prompt.ask("Content to decode"))
@@ -246,8 +247,8 @@ def chat(q: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] 
     console.print(Markdown(think("", q, model=model, prompt_name=prompt)))
 
 @app.command()
-def fix(issue: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
-    debug_loop(issue, model=model, prompt=prompt)
+def fix(issue: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None, ui_hint: Optional[Dict] = None):
+    debug_loop(issue, model=model, prompt=prompt, ui_hint=ui_hint)
 
 @app.command()
 def plan(task: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None):

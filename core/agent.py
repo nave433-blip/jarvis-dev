@@ -100,9 +100,17 @@ def generate_plan(task, model=None):
     """Generate a high-level engineering plan for a task."""
     return think("", f"Create a step-by-step engineering plan for this task. Do not execute tools, just design the strategy: {task}", model=model, prompt_name="architect")
 
-def debug_loop(issue, model=None, prompt=None):
+def debug_loop(issue, model=None, prompt=None, ui_hint=None):
     context = f"Original Issue: {issue}"
     
+    # If a UI hint is provided, display it first
+    if ui_hint:
+        title = ui_hint.get("title", "Task Initialization")
+        subtitle = ui_hint.get("subtitle", "")
+        markdown = ui_hint.get("markdown", "")
+        panel_text = f"[bold white]{title}[/bold white]\n[dim]{subtitle}[/dim]\n\n{markdown}"
+        console.print(Panel(panel_text, title="💎 GEMINI UI HINT", border_style="cyan"))
+
     # Auto-Research: If the issue looks like a project name, try to locate it first
     if len(issue.split()) == 1 and not os.path.exists(issue):
         from tools.search import system_find
