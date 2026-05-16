@@ -7,7 +7,7 @@ def run(cmd):
         return "BLOCKED: unsafe command"
 
     try:
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=180)
         output = result.stdout
         error = result.stderr
         return {
@@ -15,6 +15,8 @@ def run(cmd):
             "stderr": error,
             "return_code": result.returncode
         }
+    except subprocess.TimeoutExpired:
+        return {"error": "Command timed out after 3 minutes (180s) of no output."}
     except Exception as e:
         return {"error": str(e)}
 

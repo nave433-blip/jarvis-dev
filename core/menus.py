@@ -43,10 +43,19 @@ def config_menu():
             table.add_row(k, str(val), desc)
         
         console.print(table)
-        console.print("\n[1] Launch Setup Wizard | [b] Back")
-        choice = Prompt.ask("Choice", choices=["1", "b"], default="b")
-        if choice == "1":
+        console.print("\n[w] Launch Setup Wizard | [e] Edit Single Key | [b] Back")
+        choice = Prompt.ask("Choice", choices=["w", "e", "b"], default="b")
+        if choice == "w":
             setup_wizard()
+        elif choice == "e":
+            key = Prompt.ask("Enter the key name to edit")
+            if key in config_data:
+                val = Prompt.ask(f"Enter new value for {key}", default=str(config_data[key]))
+                config_data[key] = val
+                save_config(config_data)
+                console.print(f"[green]Updated {key}[/green]")
+            else:
+                console.print(f"[red]Key '{key}' not found.[/red]")
         else:
             break
 
@@ -212,33 +221,39 @@ def robust_help():
     help_md = """
     # JARVIS Engineering Suite Documentation
     
-    ### 🌐 /network
-    Local network intelligence. Map out devices on your subnet and scan specific targets for open ports.
+    ### 💬 /chat [query]
+    Connects to the active model to provide advice, code explanations, or project brainstorming.
     
-    ### 🔑 /ssh [host] [user] [cmd]
-    Remote execution engine. Connect securely to your servers to run maintenance or debug deployment issues.
-    
-    ### 🏢 /server
-    Process & Port management. View what services are using your bandwidth and manage local system resources.
-
-    ### ☁️ /cloud
-    Unified cloud bridge. Search and list files on G-Drive, Dropbox, and iCloud natively.
-
     ### 🔧 /fix [issue]
     Autonomous agent mode. Research, strategy, execution, and verification—all in one loop.
     
     ### 🛠 /troubleshoot [command]
-    Runs a failing command and uses its error output to autonomously repair the source code.
+    Warp-inspired Agent Mode. Runs a command, captures error output, and enters a debug loop to fix the code causing the crash.
+
+    ### 🧪 /analyze-file [path]
+    Deep security and quality audit of a single file. Useful for pre-PR checks and identifying vulnerabilities.
+
+    ### 🧠 /memory
+    Manages the FAISS vector database. This allows JARVIS to have a 'long-term' memory of your past projects and conversations.
+
+    ### 🎭 /personality
+    Sets the behavioral persona.
+    - **Professional:** Direct and formal.
+    - **Sarcastic:** Grok-style wit and humor.
+    - **Mentor:** Patient and detailed educational responses.
+    - **Concise:** Minimalist answers only.
+
+    ### 📝 /prompts
+    Manage your custom role library. Add @name in your chat to apply a specific persona on the fly.
     """
     console.print(Panel(Markdown(help_md), title="[bold green]Robust Documentation[/bold green]", border_style="green"))
     from rich.align import Align
     console.print(Align.center(get_main_menu_table()))
 
 def cloud_menu():
-    # We'll import cloud from cli inside the function to avoid circular imports
-    import cli
+    from cli import cloud
     console.print(Panel("Select Cloud Platform:\n[1] Google Drive | [2] Dropbox | [3] iCloud Drive | [b] Back", title="Cloud Integration"))
     choice = Prompt.ask("Choice", choices=["1", "2", "3", "b"], default="b")
-    if choice == "1": cli.cloud("gdrive")
-    elif choice == "2": cli.cloud("dropbox")
-    elif choice == "3": cli.cloud("icloud")
+    if choice == "1": cloud("gdrive")
+    elif choice == "2": cloud("dropbox")
+    elif choice == "3": cloud("icloud")

@@ -57,6 +57,21 @@ def detect_ollama():
             continue
     return None
 
+def smart_input(prompt, default_val, key_name=None, auto_detect_func=None):
+    """Ask if user knows the info; if not, try to auto-detect or use default."""
+    if Confirm.ask(f"Do you have the specific {prompt} details?"):
+        return Prompt.ask(f"Enter {prompt}", default=default_val)
+    
+    if auto_detect_func:
+        console.print(f"[dim]Attempting to auto-configure {prompt}...[/dim]")
+        detected = auto_detect_func()
+        if detected:
+            console.print(f"[green]✅ Auto-detected: {detected}[/green]")
+            return detected
+        
+    console.print(f"[yellow]⚠️ Could not auto-detect {prompt}. Using default: {default_val}[/yellow]")
+    return default_val
+
 def setup_wizard():
     console.print("[bold cyan]Welcome to JARVIS Setup Wizard[/bold cyan]\n")
     
@@ -70,12 +85,7 @@ def setup_wizard():
     config["provider"] = provider
 
     if provider == "ollama":
-        auto_host = detect_ollama()
-        if auto_host:
-            console.print(f"[green]Detected local Ollama instance at {auto_host}[/green]")
-            config["ollama_host"] = auto_host
-        else:
-            config["ollama_host"] = Prompt.ask("Ollama Host URL", default=config["ollama_host"])
+        config["ollama_host"] = smart_input("Ollama Host URL", config["ollama_host"], auto_detect_func=detect_ollama)
         config["jarvis_model"] = Prompt.ask("Ollama Model Name", default=config["jarvis_model"])
     
     if Confirm.ask("Would you like to configure API keys now?"):
@@ -88,7 +98,7 @@ def setup_wizard():
         config["github_token"] = Prompt.ask("GitHub Personal Access Token", default=config["github_token"], password=True)
 
     save_config(config)
-    console.print("\n[green]Configuration saved to ~/.jarvis/config.json[/green]")
+    console.print("\n[green]Configuration saved successfully.[/green]")
 
 def get_env_with_config(key):
     """Get value from environment variable or fallback to config file."""
