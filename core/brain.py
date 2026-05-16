@@ -26,16 +26,27 @@ class OllamaProvider(LLMProvider):
         self.url = f"{self.host}/api/generate"
 
     def ask(self, prompt, context=""):
-        try:
-            r = requests.post(self.url, json={
-                "model": self.model,
-                "prompt": prompt,
-                "stream": False
-            }, timeout=60)
-            r.raise_for_status()
-            return r.json()["response"]
-        except Exception as e:
-            return f"Ollama Error: {e}"
+        import time
+        max_retries = 3
+        timeout = 120 # Increased to 2 minutes
+        
+        for attempt in range(max_retries):
+            try:
+                r = requests.post(self.url, json={
+                    "model": self.model,
+                    "prompt": prompt,
+                    "stream": False
+                }, timeout=timeout)
+                r.raise_for_status()
+                return r.json()["response"]
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                if attempt == max_retries - 1:
+                    return f"Ollama Error (Final Attempt): {e}"
+                console.print(f"[yellow]⚠️ Ollama timeout/error (Attempt {attempt+1}/{max_retries}). Retrying in 5s...[/yellow]")
+                time.sleep(5)
+            except Exception as e:
+                return f"Ollama Error: {e}"
+        return "Ollama Error: Max retries exceeded."
 
 class OpenAICompatibleProvider(LLMProvider):
     def __init__(self, api_key, url, model):
