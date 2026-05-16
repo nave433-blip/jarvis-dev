@@ -6,7 +6,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from core.deps import ensure_all
 ensure_all()
 
-# 2. Auto-Update Check
+# 2. Global Self-Repair & Reporting Engine
+from core.repair import init_repair_engine
+init_repair_engine()
+
+# 3. Auto-Update Check
 from core.update import auto_update_check, CURRENT_VERSION
 auto_update_check()
 
@@ -37,20 +41,10 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/cloud", "/troubleshoot", "/free", "/model", "/help", "/exit"
+    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/exit"
 ]
 
 def display_welcome():
-    # Load icon if possible (ASCII art or just a box)
-    logo = """
-    [bold white]      _______[/bold white]
-    [bold white]     |__   __|[/bold white]
-    [bold white]        | |[/bold white]
-    [bold white]        | |[/bold white]
-    [bold white]      __| |[/bold white]
-    [bold white]     |____/ [/bold white]
-    """
-    
     splash_text = f"""
     [bold cyan]JARVIS[/bold cyan] [white]v{CURRENT_VERSION}[/white]
     [dim]The Advanced AI Engineering Suite[/dim]
@@ -79,6 +73,9 @@ def get_main_menu_table():
     table.add_row("/analyze-file", "Focused security and performance audit on a single file")
     table.add_row("/locate", "Global system search for files and directories")
     table.add_row("/troubleshoot", "Warp-style Agent Mode: Run command and auto-fix errors")
+    table.add_row("/network", "Fing-style local network discovery and port scanning")
+    table.add_row("/ssh", "Execute commands on remote servers via agentic SSH")
+    table.add_row("/server", "Monitor local ports, process stats, and manage services")
     table.add_row("/undo", "Safety rollback: Revert the last file change made by JARVIS")
     table.add_row("/dashboard", "Launch live multi-window system monitoring interface")
     table.add_row("/memory", "Search or manage the persistent vector knowledge base")
@@ -90,7 +87,7 @@ def get_main_menu_table():
     table.add_row("/help", "Access detailed system documentation and role guide")
     table.add_row("/exit", "Secure shutdown of all background threads and exit")
     
-    return Panel(table, title="[bold white]System Commands[/bold white]", border_style="blue", expand=False)
+    return Panel(table, title="[bold white]System Commands & Capabilities[/bold white]", border_style="blue", expand=False)
 
 @app.command()
 def menu():
@@ -148,6 +145,12 @@ def menu():
                 analyze_file(args or Prompt.ask("Path to file"), prompt=prompt_name)
             elif cmd == "/locate":
                 locate(args or Prompt.ask("Filename to search for"))
+            elif cmd == "/network":
+                network_menu()
+            elif cmd == "/ssh":
+                ssh_command(args)
+            elif cmd == "/server":
+                server_menu()
             elif cmd == "/undo":
                 undo(args or Prompt.ask("Path to undo"))
             elif cmd == "/dashboard":
@@ -158,10 +161,12 @@ def menu():
                 personality_menu()
             elif cmd == "/models":
                 models_menu()
-            elif cmd == "/model":
-                show_model_status()
+            elif cmd == "/prompts":
+                prompts_menu()
             elif cmd == "/cloud":
                 cloud_menu()
+            elif cmd == "/model":
+                show_model_status()
             elif cmd == "/focus":
                 focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]:
@@ -189,26 +194,6 @@ def menu():
         except EOFError:
             break
 
-def show_model_status():
-    provider_obj = get_provider()
-    p_name = get_env_with_config("provider") or "ollama"
-    model_name = provider_obj.model
-    
-    quota = "N/A (Unlimited Local)"
-    if p_name.lower() in ["gemini"]:
-        quota = "1,500 requests/day (Google AI Studio Free Tier)"
-    elif p_name.lower() in ["openai", "claude", "mistral", "nvidia", "grok"]:
-        quota = "Managed by Provider Billing/Tokens"
-    
-    status_info = f"""
-    [bold]Active Provider:[/bold] {p_name.upper()}
-    [bold]Active Model:[/bold] {model_name}
-    [bold]Current Quota:[/bold] {quota}
-    
-    [dim]Tip: Use '/models' to switch providers or '/free' to see free tier options.[/dim]
-    """
-    console.print(Panel(status_info, title="[bold magenta]Active Model Indicator[/bold magenta]", border_style="magenta"))
-
 def config_menu():
     """Manage global JARVIS settings, identities, and API keys."""
     while True:
@@ -234,11 +219,13 @@ def config_menu():
             "lm_studio_host": "Host URL for LM Studio local API (Default: localhost:1234)",
             "llama_cpp_host": "Host URL for Llama.cpp local server (Default: localhost:8080)",
             "gpt4all_host": "Host URL for GPT4All local API (Default: localhost:4891)",
-            "model_mode": "Auto-selection logic: manual, auto-offline, auto-online, or auto-mixed"
+            "model_mode": "Auto-selection logic: manual, auto-offline, auto-online, or auto-mixed",
+            "dropbox_token": "Token for Dropbox cloud storage access",
+            "gdrive_token": "Token for Google Drive cloud storage access"
         }
         
         for k, v in config_data.items():
-            val = v if "api_key" not in k or not v else "****" + v[-4:]
+            val = v if "api_key" not in k and "token" not in k or not v else "****" + v[-4:]
             desc = descriptions.get(k, "General system parameter")
             table.add_row(k, str(val), desc)
         
@@ -250,35 +237,70 @@ def config_menu():
         else:
             break
 
+def network_menu():
+    from tools.network import scan_network, scan_ports
+    while True:
+        console.print(Panel("Network Tools:\n[1] Scan Local Subnet (Fing-style) | [2] Scan Ports on IP | [b] Back", title="Networking"))
+        choice = Prompt.ask("Choice", choices=["1", "2", "b"], default="b")
+        if choice == "1":
+            console.print(scan_network())
+        elif choice == "2":
+            ip = Prompt.ask("Target IP")
+            ports = scan_ports(ip)
+            console.print(f"[green]Open Ports on {ip}:[/green] {ports}")
+        else: break
+
+def server_menu():
+    from tools.server import list_listening_ports, get_process_stats, kill_process
+    while True:
+        stats = get_process_stats()
+        status = f"CPU: {stats['cpu_usage']}% | RAM: {stats['memory_usage']}% | PIDs: {stats['process_count']}"
+        console.print(Panel(status, title="System Health"))
+        console.print("\n[1] List Listening Ports | [2] Kill Process | [b] Back")
+        choice = Prompt.ask("Choice", choices=["1", "2", "b"], default="b")
+        if choice == "1":
+            console.print(list_listening_ports())
+        elif choice == "2":
+            pid = int(Prompt.ask("Enter PID to terminate"))
+            console.print(kill_process(pid))
+        else: break
+
+def ssh_command(args):
+    from tools.ssh import run_remote
+    if not args:
+        host = Prompt.ask("Host"); user = Prompt.ask("Username"); cmd = Prompt.ask("Command")
+    else:
+        parts = args.split(" ", 2)
+        if len(parts) < 3:
+            console.print("[red]Usage: /ssh <host> <user> <command>[/red]")
+            return
+        host, user, cmd = parts
+    
+    console.print(f"[bold blue]Connecting to {host} as {user}...[/bold blue]")
+    res = run_remote(host, user, cmd)
+    console.print(Panel(str(res), title=f"SSH Result: {host}"))
+
 def robust_help():
-    """Exhaustive guide for all JARVIS engineering systems."""
     help_md = """
     # JARVIS Engineering Suite Documentation
     
-    ### 💬 /chat [query]
-    Connects to the active model to provide advice, code explanations, or project brainstorming.
+    ### 🌐 /network
+    Local network intelligence. Map out devices on your subnet and scan specific targets for open ports.
     
+    ### 🔑 /ssh [host] [user] [cmd]
+    Remote execution engine. Connect securely to your servers to run maintenance or debug deployment issues.
+    
+    ### 🏢 /server
+    Process & Port management. View what services are using your bandwidth and manage local system resources.
+
+    ### ☁️ /cloud
+    Unified cloud bridge. Search and list files on G-Drive, Dropbox, and iCloud natively.
+
     ### 🔧 /fix [issue]
-    Autonomous agent mode. JARVIS will research the issue, create a strategy, apply code changes, and verify the result.
+    Autonomous agent mode. Research, strategy, execution, and verification—all in one loop.
     
     ### 🛠 /troubleshoot [command]
-    Warp-style Agent Mode. Runs a command, captures error output, and enters a debug loop to fix the code causing the crash.
-
-    ### 🧪 /analyze-file [path]
-    Deep security and quality audit of a single file. Useful for pre-PR checks and identifying vulnerabilities.
-
-    ### 🧠 /memory
-    Manages the FAISS vector database. This allows JARVIS to have a 'long-term' memory of your past projects and conversations.
-
-    ### 🎭 /personality
-    Sets the behavioral persona.
-    - **Professional:** Direct and formal.
-    - **Sarcastic:** Grok-style wit and humor.
-    - **Mentor:** Patient and detailed educational responses.
-    - **Concise:** Minimalist answers only.
-
-    ### 📝 /prompts
-    Manage your custom role library. Add @name in your chat to apply a specific persona on the fly.
+    Runs a failing command and uses its error output to autonomously repair the source code.
     """
     console.print(Panel(Markdown(help_md), title="[bold green]Robust Documentation[/bold green]", border_style="green"))
 

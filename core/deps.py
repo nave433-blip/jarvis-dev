@@ -21,7 +21,9 @@ PYTHON_DEPS = {
     "Pillow": "PIL",
     "dropbox": "dropbox",
     "google-api-python-client": "googleapiclient",
-    "google-auth-oauthlib": "google_auth_oauthlib"
+    "google-auth-oauthlib": "google_auth_oauthlib",
+    "paramiko": "paramiko",
+    "psutil": "psutil"
 }
 
 def check_python_deps():

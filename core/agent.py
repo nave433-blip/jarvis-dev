@@ -7,6 +7,9 @@ from tools.installer import brew_install, git_install, curl_install
 from tools.github import github_tool
 from tools.analytics import analyze_complexity, project_summary
 from tools.cloud import list_dropbox, list_gdrive, list_icloud
+from tools.network import scan_network, scan_ports
+from tools.ssh import run_remote
+from tools.server import list_listening_ports, get_process_stats, kill_process
 from rich.console import Console
 from rich.panel import Panel
 
@@ -53,6 +56,17 @@ def dispatch_tool(line, next_line):
             if platform == "dropbox": return list_dropbox(args.get("path", ""))
             if platform == "gdrive": return list_gdrive(args.get("query", "'root' in parents"))
             if platform == "icloud": return list_icloud(args.get("path", ""))
+        elif tool_name == "NETWORK":
+            action = args.get("action", "scan")
+            if action == "scan": return scan_network()
+            if action == "ports": return scan_ports(args["ip"], args.get("range", (1, 1024)))
+        elif tool_name == "SSH":
+            return run_remote(args["host"], args["username"], args["command"], args.get("password"), args.get("key"))
+        elif tool_name == "SERVER":
+            action = args.get("action", "ports")
+            if action == "ports": return list_listening_ports()
+            if action == "stats": return get_process_stats()
+            if action == "kill": return kill_process(args["pid"])
             
     except Exception as e:
         return f"Tool Error: {e}"
@@ -95,7 +109,7 @@ def troubleshoot_loop(command, model=None, prompt=None):
     result = run(command)
     
     if result.get("return_code") == 0:
-        console_local.print("[green]Command succeeded on first try. No troubleshooting needed.[/green]")
+        console.print("[green]Command succeeded on first try. No troubleshooting needed.[/green]")
         return
     
     error_context = f"""

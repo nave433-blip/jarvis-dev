@@ -250,6 +250,9 @@ Available Tools:
 - GITHUB: action(info, issue, list_prs, create_pr), repo, title, body, head, base
 - ANALYTICS: action(file, summary), path
 - CLOUD: platform(dropbox, gdrive, icloud), action(list), path/query
+- NETWORK: action(scan, ports), ip, range (Discovery & Fing-style tools)
+- SSH: host, username, command, password, key (Remote server execution)
+- SERVER: action(ports, stats, kill), pid (Monitoring & Management)
 
 System Rules:
 {project_rules}
