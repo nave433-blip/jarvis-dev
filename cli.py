@@ -431,13 +431,33 @@ def models_menu():
     current_p = config.get("provider", "ollama")
     current_m = config.get("jarvis_model", "llama3")
     console.print(Panel(f"Provider: [bold cyan]{current_p.upper()}[/bold cyan]\nModel: [bold yellow]{current_m}[/bold yellow]", title="LLM Selection"))
-    console.print("\n[1] Ollama | [2] OpenAI | [3] Gemini | [4] Claude | [5] Grok | [6] Mistral | [7] NVIDIA | [8] LM Studio | [9] Llama.cpp | [b] Back")
-    choice = Prompt.ask("Select provider", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "b"], default="b")
-    p_mapping = {"1": "ollama", "2": "openai", "3": "gemini", "4": "claude", "5": "grok", "6": "mistral", "7": "nvidia", "8": "lm_studio", "9": "llama_cpp"}
+    console.print("\n[1] Ollama | [2] OpenAI | [3] Gemini | [4] Claude | [5] Grok | [6] Mistral | [7] NVIDIA")
+    console.print("[8] LM Studio | [9] Llama.cpp | [g] GPT4All | [b] Back")
+    
+    choice = Prompt.ask("Select provider", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "g", "b"], default="b")
+    
+    p_mapping = {
+        "1": "ollama", "2": "openai", "3": "gemini", "4": "claude", 
+        "5": "grok", "6": "mistral", "7": "nvidia", "8": "lm_studio", 
+        "9": "llama_cpp", "g": "gpt4all"
+    }
+    
     if choice in p_mapping:
         provider = p_mapping[choice]
         config["provider"] = provider
-        models = {"ollama": ["llama3", "mistral", "codellama", "phi3"], "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"], "gemini": ["gemini-1.5-pro", "gemini-1.5-flash"], "claude": ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"], "grok": ["grok-beta"], "mistral": ["mistral-large-latest", "open-mixtral-8x22b"], "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"], "lm_studio": ["local-model"], "llama_cpp": ["local-model"]}
+        
+        models = {
+            "ollama": ["llama3", "mistral", "codellama", "phi3"],
+            "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
+            "gemini": ["gemini-1.5-pro", "gemini-1.5-flash"],
+            "claude": ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"],
+            "grok": ["grok-beta"],
+            "mistral": ["mistral-large-latest", "open-mixtral-8x22b"],
+            "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"],
+            "lm_studio": ["local-model"],
+            "llama_cpp": ["local-model"],
+            "gpt4all": ["Mistral-7B-Instruct", "Llama-3-8B-Instruct"]
+        }
         console.print(f"\n[bold]Common Models for {provider.upper()}:[/bold]")
         for m in models[provider]: console.print(f"- {m}")
         new_model = Prompt.ask("Enter model name", default=models[provider][0])

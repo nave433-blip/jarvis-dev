@@ -14,6 +14,7 @@ DEFAULT_CONFIG = {
     "ollama_host": "http://localhost:11434",
     "lm_studio_host": "http://localhost:1234",
     "llama_cpp_host": "http://localhost:8080",
+    "gpt4all_host": "http://localhost:4891",
     "jarvis_model": "llama3",
     "gemini_api_key": "",
     "anthropic_api_key": "",

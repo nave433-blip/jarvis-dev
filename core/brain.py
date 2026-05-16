@@ -137,6 +137,13 @@ def get_provider(model_override=None):
             url=f"{get_env_with_config('llama_cpp_host')}/v1/chat/completions",
             model=model_override or "local-model"
         )
+    
+    if p == "gpt4all":
+        return OpenAICompatibleProvider(
+            api_key="not-needed",
+            url=f"{get_env_with_config('gpt4all_host')}/v1/chat/completions",
+            model=model_override or "local-model"
+        )
         
     if p == "free":
         # Auto-select the best available free tier
