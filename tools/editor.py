@@ -67,7 +67,9 @@ def replace_in_file(file_path, old_string, new_string, interactive=True):
                 console.print("[bold green]Session permission granted. All subsequent edits will be applied automatically.[/bold green]")
             if choice == "m":
                 console.print("[yellow]Manual override requested. Opening editor...[/yellow]")
-                return "Edit paused for manual modification (Feature coming soon)."
+                editor = os.getenv("EDITOR", "nano")
+                subprocess.call([editor, file_path])
+                return "Edit completed manually by user. JARVIS state refreshed."
     
     # Create backup before applying
     create_backup(file_path)

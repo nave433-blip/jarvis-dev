@@ -46,7 +46,8 @@ console = Console()
 COMMANDS = [
     "/chat", "/fix", "/voice", "/watch", "/config", "/init", "/analyze", "/analyze-file",
     "/locate", "/undo", "/dashboard", "/memory", "/personality", "/models", "/focus", 
-    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/help", "/health", "/upgrade", "/nave", "/sync", "/exit"
+    "/cloud", "/network", "/ssh", "/server", "/troubleshoot", "/free", "/model", "/doctor",
+    "/git", "/nave", "/sync", "/search", "/clear", "/help", "/health", "/upgrade", "/exit"
 ]
 
 @app.command()
@@ -126,6 +127,15 @@ def menu():
             elif cmd == "/focus": focus(args or Prompt.ask("Path to focus on"))
             elif cmd in ["/troubleshoot", "/t"]: troubleshoot(args or Prompt.ask("Failing command"), prompt=prompt_name)
             elif cmd == "/free": free_keys()
+            elif cmd == "/doctor": run_doctor()
+            elif cmd == "/git": ai_git(args or Prompt.ask("What git operation?"))
+            elif cmd == "/search":
+                q = args or Prompt.ask("Search session history")
+                results = session.history.get_strings()
+                matches = [s for s in results if q.lower() in s.lower()]
+                console.print(Panel("\n".join(matches[-10:]), title=f"History Search: {q}"))
+            elif cmd == "/clear":
+                console.clear()
             elif cmd in ["/help", "/h"]: menus.robust_help()
             elif cmd == "/health":
                 health_results = check_system_health()
@@ -346,6 +356,38 @@ def cloud(platform: str, action: str = "list", path: str = ""):
     console.print(Panel(str(res), title=f"Cloud Result: {platform}"))
 
 @app.command()
+def run_doctor():
+    """Comprehensive system diagnosis and auto-repair."""
+    console.print(Panel("👨‍⚕️ [bold cyan]JARVIS DOCTOR[/bold cyan]", border_style="cyan"))
+    
+    # 1. Dependency check
+    from core.deps import ensure_all
+    console.print("[dim]Checking dependencies...[/dim]")
+    ensure_all()
+    
+    # 2. Health check
+    results = check_system_health()
+    errors = display_health_report(results)
+    if errors:
+        auto_repair_workspace(results)
+    
+    # 3. Update check
+    from core.update import check_for_updates
+    latest = check_for_updates()
+    if latest:
+        console.print(f"[yellow]Update available: {latest}[/yellow]")
+    
+    console.print("[green]System diagnosis complete.[/green]")
+
+@app.command()
+def ai_git(task: str):
+    """AI-powered git management."""
+    console.print(f"[bold cyan]AI-Git:[/bold cyan] {task}")
+    prompt = f"Perform this git task: {task}. Use the SHELL tool. If it's a commit, generate a good message based on changes."
+    response = think("", prompt)
+    console.print(Markdown(response))
+
+@app.command()
 def init():
     """Initialize project."""
     if os.path.exists("JARVIS.md"): console.print("[yellow]Already exists.[/yellow]")
@@ -357,10 +399,28 @@ def show_model_status():
     provider_obj = get_provider()
     p_name = get_env_with_config("provider") or "ollama"
     model_name = provider_obj.model
-    quota = "1,500 requests/day (Free Tier)" if p_name.lower() == "gemini" else "Managed by Provider"
-    if p_name.lower() == "ollama": quota = "N/A (Unlimited Local)"
-    status_info = f"[bold]Provider:[/bold] {p_name.upper()}\n[bold]Model:[/bold] {model_name}\n[bold]Quota:[/bold] {quota}"
-    console.print(Panel(status_info, title="[bold magenta]Model Indicator[/bold magenta]", border_style="magenta"))
+    
+    # Real-world quota mappings for better user awareness
+    quotas = {
+        "gemini": "1,500 requests/day (Free Tier - AI Studio)",
+        "openai": "Usage-based (Check platform.openai.com)",
+        "claude": "Usage-based (Check console.anthropic.com)",
+        "grok": "Beta Access (Check x.ai)",
+        "ollama": "N/A (Unlimited Local)",
+        "lm_studio": "N/A (Unlimited Local)",
+        "nvidia": "Trial Credits / Enterprise"
+    }
+    
+    quota = quotas.get(p_name.lower(), "Check Provider Dashboard")
+    
+    status_info = f"""
+    [bold cyan]Active Brain:[/bold cyan] {p_name.upper()}
+    [bold cyan]Intelligence Model:[/bold cyan] {model_name}
+    [bold cyan]Resource Quota:[/bold cyan] {quota}
+    
+    [dim]Tip: Switch logic via '/models' or change personality via '/personality'[/dim]
+    """
+    console.print(Panel(status_info, title="[bold magenta]Model & Quota Status[/bold magenta]", border_style="magenta"))
 
 @app.command()
 def health():

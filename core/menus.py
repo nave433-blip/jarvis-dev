@@ -3,6 +3,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.prompt import Prompt
+from rich.markdown import Markdown
 from core.config import load_config, save_config, setup_wizard
 
 console = Console()
@@ -19,7 +20,7 @@ def config_menu():
         descriptions = {
             "provider": "Primary LLM engine (Ollama, Gemini, OpenAI, Claude, Grok, Mistral, NVIDIA)",
             "jarvis_model": "The specific AI model version (e.g., llama3, gpt-4o, claude-3-5-sonnet)",
-            "personality": "Tone and detail level of responses (Professional, Sarcastic, Concise, Mentor)",
+            "personality": "Tone and detail level of responses (Professional, Sarcastic, Concise, Mentor, Nave-AI)",
             "active_prompt": "Persistent system instructions from your Prompt Library",
             "github_token": "Allows JARVIS to autonomously manage PRs, Issues, and repo data",
             "gemini_api_key": "Token for Google Gemini (recommended for high-quality free tier)",
@@ -33,7 +34,6 @@ def config_menu():
             "llama_cpp_host": "Host URL for Llama.cpp local server (Default: localhost:8080)",
             "gpt4all_host": "Host URL for GPT4All local API (Default: localhost:4891)",
             "model_mode": "Auto-selection logic: manual, auto-offline, auto-online, or auto-mixed",
-            "self_repair": "Autonomous system healing: Enable/disable automatic repair on errors",
             "dropbox_token": "Token for Dropbox cloud storage access",
             "gdrive_token": "Token for Google Drive cloud storage access"
         }
@@ -44,16 +44,10 @@ def config_menu():
             table.add_row(k, str(val), desc)
         
         console.print(table)
-        console.print("\n[w] Launch Setup Wizard | [e] Edit Single Key | [r] Toggle Self-Repair | [b] Back")
-        choice = Prompt.ask("Choice", choices=["w", "e", "r", "b"], default="b")
+        console.print("\n[w] Launch Setup Wizard | [e] Edit Single Key | [b] Back")
+        choice = Prompt.ask("Choice", choices=["w", "e", "b"], default="b")
         if choice == "w":
             setup_wizard()
-        elif choice == "r":
-            current = config_data.get("self_repair", False)
-            config_data["self_repair"] = not current
-            save_config(config_data)
-            status = "ENABLED" if not current else "DISABLED"
-            console.print(f"[green]Self-Repair {status}[/green]")
         elif choice == "e":
             key = Prompt.ask("Enter the key name to edit")
             if key in config_data:
@@ -124,7 +118,6 @@ def personality_menu():
         config["personality"] = mapping[choice]
         save_config(config)
         console.print(f"[green]Personality updated to {mapping[choice].capitalize()}[/green]")
-
 
 def models_menu():
     config = load_config()
@@ -224,7 +217,6 @@ def ssh_command(args):
     console.print(Panel(str(res), title=f"SSH Result: {host}"))
 
 def robust_help():
-    from rich.markdown import Markdown
     from core.ui import get_main_menu_table
     help_md = """
     # JARVIS Engineering Suite Documentation
@@ -233,7 +225,7 @@ def robust_help():
     Connects to the active model to provide advice, code explanations, or project brainstorming.
     
     ### 🔧 /fix [issue]
-    Autonomous agent mode. Research, strategy, execution, and verification—all in one loop.
+    Autonomous agent mode. JARVIS will research the issue, create a strategy, apply code changes, and verify the result.
     
     ### 🛠 /troubleshoot [command]
     Warp-inspired Agent Mode. Runs a command, captures error output, and enters a debug loop to fix the code causing the crash.
@@ -241,15 +233,18 @@ def robust_help():
     ### 🧪 /analyze-file [path]
     Deep security and quality audit of a single file. Useful for pre-PR checks and identifying vulnerabilities.
 
+    ### 🩺 /doctor
+    Comprehensive system diagnosis. Checks dependencies, repository health, and updates in one go.
+
     ### 🧠 /memory
     Manages the FAISS vector database. This allows JARVIS to have a 'long-term' memory of your past projects and conversations.
 
     ### 🎭 /personality
     Sets the behavioral persona.
-    - **Professional:** Direct and formal.
-    - **Sarcastic:** Grok-style wit and humor.
+    - **Professional:** Direct and formal senior engineer.
+    - **Sarcastic:** Grok-style technical wit and humor.
     - **Mentor:** Patient and detailed educational responses.
-    - **Concise:** Minimalist answers only.
+    - **Nave-AI:** High-precision multi-model refinement loop.
 
     ### 📝 /prompts
     Manage your custom role library. Add @name in your chat to apply a specific persona on the fly.
