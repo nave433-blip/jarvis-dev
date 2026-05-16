@@ -36,6 +36,7 @@ def get_main_menu_table():
     table.add_row("[5] Config", "View and edit settings")
     table.add_row("[6] Init", "Setup JARVIS.md for the current project")
     table.add_row("[7] Analyze", "Deep project complexity and health analytics")
+    table.add_row("[8] Undo", "Rollback the last file edit")
     table.add_row("[h] Help", "Robust command documentation")
     table.add_row("[q] Quit", "Exit the JARVIS CLI")
     
@@ -65,6 +66,9 @@ def menu():
             init()
         elif choice == "7":
             analyze()
+        elif choice == "8":
+            path = Prompt.ask("Path to file to undo")
+            undo(path)
         elif choice == "h":
             robust_help()
         elif choice == "q":
@@ -132,18 +136,30 @@ def setup():
     """Run the interactive setup wizard."""
     setup_wizard()
 
+from typing import Optional
+
 @app.command()
-def chat(q: str):
+def chat(q: str, model: Optional[str] = typer.Option(None, "--model", "-m", help="Override default LLM model")):
     """Chat with JARVIS."""
     provider = get_env_with_config("provider") or "ollama"
-    console.print(Panel(f"JARVIS [bold blue]({provider})[/bold blue]", border_style="blue"))
-    response = think("", q)
+    console.print(Panel(f"JARVIS [bold blue]({provider})[/bold blue] [dim]model: {model or 'default'}[/dim]", border_style="blue"))
+    response = think("", q, model=model)
     console.print(Markdown(response))
 
 @app.command()
-def fix(issue: str):
+def fix(issue: str, model: Optional[str] = typer.Option(None, "--model", "-m", help="Override default LLM model")):
     """Autonomous debug loop."""
-    debug_loop(issue)
+    debug_loop(issue, model=model)
+
+@app.command()
+def undo(path: str):
+    """Rollback the last edit to a specific file."""
+    from tools.editor import undo_last_edit
+    res = undo_last_edit(path)
+    if "Error" in res:
+        console.print(f"[red]{res}[/red]")
+    else:
+        console.print(f"[green]{res}[/green]")
 
 @app.command()
 def voice():

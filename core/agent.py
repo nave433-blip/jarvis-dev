@@ -46,12 +46,12 @@ def dispatch_tool(line, next_line):
     
     return "Unknown tool"
 
-def debug_loop(issue):
+def debug_loop(issue, model=None):
     context = f"Original Issue: {issue}"
 
     for i in range(10): # More steps for complex reasoning
         print(f"\n--- STEP {i+1} ---")
-        response = think(context, "Resolve the issue using tools if necessary.")
+        response = think(context, "Resolve the issue using tools if necessary.", model=model)
         
         print("\nJARVIS RESPONSE:\n", response)
         

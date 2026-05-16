@@ -89,13 +89,20 @@ class GrokProvider(LLMProvider):
         except Exception as e:
             return f"Grok Error: {e}"
 
-def get_provider():
+def get_provider(model_override=None):
     p = get_env_with_config("provider") or "ollama"
     p = p.lower()
-    if p == "gemini": return GeminiProvider()
-    if p == "claude": return ClaudeProvider()
-    if p == "grok": return GrokProvider()
-    return OllamaProvider()
+    
+    if p == "gemini": provider = GeminiProvider()
+    elif p == "claude": provider = ClaudeProvider()
+    elif p == "grok": provider = GrokProvider()
+    else: provider = OllamaProvider()
+
+    if model_override:
+        provider.model = model_override
+        if p == "gemini":
+            provider.url = f"https://generativelanguage.googleapis.com/v1beta/models/{provider.model}:generateContent?key={provider.api_key}"
+    return provider
 
 def get_project_instructions():
     if os.path.exists("JARVIS.md"):
@@ -103,8 +110,8 @@ def get_project_instructions():
             return f.read()
     return ""
 
-def think(context, task):
-    provider = get_provider()
+def think(context, task, model=None):
+    provider = get_provider(model_override=model)
     relevant_memories = search(task, k=3)
     memory_context = "\n".join([f"- {m}" for m in relevant_memories])
     project_rules = get_project_instructions()

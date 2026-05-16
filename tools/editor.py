@@ -1,7 +1,38 @@
 import os
-import re
+import difflib
+from rich.console import Console
+from rich.panel import Panel
+from rich.syntax import Syntax
+from rich.prompt import Confirm
+import shutil
 
-def replace_in_file(file_path, old_string, new_string):
+console = Console()
+BACKUP_DIR = ".jarvis_backups"
+
+def create_backup(file_path):
+    if not os.path.exists(BACKUP_DIR):
+        os.makedirs(BACKUP_DIR)
+    
+    backup_path = os.path.join(BACKUP_DIR, os.path.basename(file_path) + ".bak")
+    shutil.copy2(file_path, backup_path)
+    return backup_path
+
+def show_diff(file_path, old_content, new_content):
+    diff = difflib.unified_diff(
+        old_content.splitlines(keepends=True),
+        new_content.splitlines(keepends=True),
+        fromfile=file_path + " (current)",
+        tofile=file_path + " (proposed)"
+    )
+    diff_text = "".join(diff)
+    if not diff_text:
+        console.print("[yellow]No changes detected.[/yellow]")
+        return False
+    
+    console.print(Panel(Syntax(diff_text, "diff", theme="monokai"), title="Proposed Changes"))
+    return True
+
+def replace_in_file(file_path, old_string, new_string, interactive=True):
     if not os.path.exists(file_path):
         return f"Error: File {file_path} not found."
     
@@ -11,16 +42,31 @@ def replace_in_file(file_path, old_string, new_string):
     if old_string not in content:
         return f"Error: Could not find exact match for the string to replace in {file_path}."
     
-    # Check for multiple occurrences
     if content.count(old_string) > 1:
-        return f"Error: Multiple occurrences of the search string found in {file_path}. Please provide more context."
+        return f"Error: Multiple occurrences found in {file_path}. Please provide more context."
     
     new_content = content.replace(old_string, new_string)
+    
+    if interactive:
+        if show_diff(file_path, content, new_content):
+            if not Confirm.ask(f"Apply changes to {file_path}?"):
+                return "Edit cancelled by user."
+    
+    # Create backup before applying
+    create_backup(file_path)
     
     with open(file_path, 'w') as f:
         f.write(new_content)
     
-    return f"Successfully updated {file_path}."
+    return f"Successfully updated {file_path}. Backup created in {BACKUP_DIR}."
+
+def undo_last_edit(file_path):
+    backup_path = os.path.join(BACKUP_DIR, os.path.basename(file_path) + ".bak")
+    if not os.path.exists(backup_path):
+        return f"Error: No backup found for {file_path}."
+    
+    shutil.copy2(backup_path, file_path)
+    return f"Successfully restored {file_path} from backup."
 
 def read_section(file_path, start_line, end_line):
     if not os.path.exists(file_path):
