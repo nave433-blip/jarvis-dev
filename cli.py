@@ -1,7 +1,7 @@
 import os
 import sys
 import time
-from typing import Optional
+from typing import Optional, Dict
 from typing_extensions import Annotated
 
 # 1. Self-Repairing Dependency Check
@@ -247,8 +247,8 @@ def chat(q: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] 
     console.print(Markdown(think("", q, model=model, prompt_name=prompt)))
 
 @app.command()
-def fix(issue: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None, ui_hint: Optional[Dict] = None):
-    debug_loop(issue, model=model, prompt=prompt, ui_hint=ui_hint)
+def fix(issue: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None, prompt: Annotated[Optional[str], typer.Option("--prompt", "-p")] = None):
+    debug_loop(issue, model=model, prompt=prompt)
 
 @app.command()
 def plan(task: str, model: Annotated[Optional[str], typer.Option("--model", "-m")] = None):
