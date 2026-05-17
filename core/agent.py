@@ -21,6 +21,8 @@ from rich.markdown import Markdown
 
 console = Console()
 
+from core.ui import display_chat_message
+
 def dispatch_tool(line, next_line):
     if not line.startswith("TOOL:"): return None
     
@@ -38,6 +40,9 @@ def dispatch_tool(line, next_line):
             return list_files(args.get("glob", "**/*"))
         elif tool_name == "SYSTEM_SEARCH":
             return system_find(args["name"], args.get("root", "/"))
+        elif tool_name == "WEB_SEARCH":
+            from tools.search import web_search
+            return web_search(args["query"])
         elif tool_name == "READ":
             return read_section(args["path"], args.get("start", 1), args.get("end", 100))
         elif tool_name == "EDIT":
@@ -94,6 +99,44 @@ def dispatch_tool(line, next_line):
             action = args.get("action", "usb")
             if action == "usb": return list_usb_devices()
             if action == "probe": return probe_ports()
+        elif tool_name == "GEMINI_REASON":
+            from core.brain import GeminiProvider
+            model = args.get("model", "gemini-1.5-pro")
+            prompt = args.get("prompt")
+            if not prompt: return "Error: Missing prompt for Gemini."
+            return GeminiProvider(model=model).ask(prompt)
+        elif tool_name == "CODEX_CLI":
+            import subprocess
+            cmd = ["codex", "exec"]
+            if "prompt" in args: cmd.append(args["prompt"])
+            try:
+                res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                return f"Codex Output:\n{res.stdout}\nErrors:\n{res.stderr}"
+            except Exception as e:
+                return f"Codex Execution Error: {e}"
+        elif tool_name == "BOX_CREATE":
+            from core.gemini_box import session
+            return f"Box creation success: {session.create_box(args['name'])}"
+        elif tool_name == "BOX_RUN":
+            from core.gemini_box import session
+            res = session.run_in_box(args['name'], args['command'])
+            return f"Box Run Result:\nSTDOUT: {res.get('stdout')}\nSTDERR: {res.get('stderr')}\nRC: {res.get('returncode')}"
+        elif tool_name == "BOX_TAIL":
+            from core.gemini_box import session
+            return session.tail_box(args['name'], args.get('lines', 50))
+        elif tool_name == "PYTHON_EXAMINE":
+            from tools.python_agent import file_summary
+            return file_summary(args["path"])
+        elif tool_name == "PYTHON_PATCH":
+            from tools.python_agent import suggest_patch_via_llm, safe_apply_new_content
+            res = suggest_patch_via_llm(args["path"], args["instruction"])
+            if res["ok"]:
+                console.print(Panel(res["unified_diff"], title="Suggested Patch", border_style="yellow"))
+                if Confirm.ask("Apply this patch?"):
+                    ok, msg = safe_apply_new_content(args["path"], res["suggested"])
+                    return msg
+                return "Patch rejected by user."
+            return f"Patch Error: {res.get('error')}"
             
     except Exception as e:
         return f"Tool Error: {e}"
@@ -128,7 +171,16 @@ def debug_loop(issue, model=None, prompt=None, ui_hint=None):
         from rich.status import Status
         
         with Status(f"[bold cyan]Cycle {i+1}:[/bold cyan] JARVIS is reasoning...", spinner="dots"):
-            response = think(context, "Resolve the issue using tools if necessary. If previous tools failed, try a different approach.", model=model, prompt_name=prompt)
+            res = think(context, "Resolve the issue using tools if necessary. If previous tools failed, try a different approach.", model=model, prompt_name=prompt)
+        
+        if not isinstance(res, dict) or not res.get("ok"):
+            # think() or NAVE-RL failed, let the CLI handle the setup prompt
+            # but we need to display the error here if we're in the loop
+            error_msg = res.get("error") if isinstance(res, dict) else str(res)
+            console.print(f"[bold red]❌ Brain Loop Interrupted:[/bold red] {error_msg}")
+            return
+
+        response = res.get("text", "")
         
         # GEMINI-STYLE: Separate thoughts from tool calls
         thoughts = ""
@@ -140,11 +192,12 @@ def debug_loop(issue, model=None, prompt=None, ui_hint=None):
                 thoughts += line + "\n"
 
         if thoughts.strip():
-            console.print(Panel(Markdown(thoughts), title=f"💭 THOUGHTS: Cycle {i+1}", border_style="blue", subtitle="[dim]Gemini-Style Reasoning[/dim]"))
+            # If there are no tool calls, this is a final answer
+            if not tool_lines:
+                display_chat_message("JARVIS", thoughts)
+            else:
+                console.print(Panel(Markdown(thoughts), title=f"💭 THOUGHTS: Cycle {i+1}", border_style="blue", subtitle="[dim]Gemini-Style Reasoning[/dim]"))
         
-        if "ERROR" in response.upper() or "FAILED" in response.upper():
-            context += "\nWarning: It seems you hit an error. Try researching the specific error message."
-
         tool_result = None
         for j, line in enumerate(tool_lines):
             if line.startswith("TOOL:") and j + 1 < len(tool_lines):
@@ -153,11 +206,14 @@ def debug_loop(issue, model=None, prompt=None, ui_hint=None):
         
         if tool_result:
             # GEMINI-STYLE: Output shell box for result
-            res_panel = Panel(str(tool_result), title="📡 TOOL OUTPUT", border_style="dim")
+            res_panel = Panel(str(tool_result), title="📡 TOOL OUTPUT", border_style="dim", box=None)
             console.print(res_panel)
             context += f"\nStep {i+1} Tool Output:\n{tool_result}"
         else:
-            ok = input("\nJARVIS seems to have finished. Exit? (y/n): ")
+            if thoughts.strip() and not tool_lines:
+                # We already displayed the final message
+                return
+            ok = Prompt.ask("\nJARVIS seems to have finished. Exit?", choices=["y", "n"], default="y")
             if ok.lower() == "y":
                 return
             context += f"\nUser feedback: Please continue."
@@ -180,7 +236,8 @@ def forge_loop(task, model=None):
     console.print(Panel(f"🛠 [bold cyan]FORGING CODE:[/bold cyan] {task}", border_style="cyan"))
     
     # Use Nave Loop for advanced reasoning
-    refined_plan = run_nave_loop(f"Create a workaround or new code for this task: {task}. Ensure it is advanced and human-unprecedented.")
+    res = run_nave_loop(f"Create a workaround or new code for this task: {task}. Ensure it is advanced and human-unprecedented.")
+    refined_plan = res.get("final_answer", str(res))
     
     # Feed refined plan back into agent loop for execution
     debug_loop(f"Execute the following refined engineering plan: {refined_plan}", model=model, prompt="architect")

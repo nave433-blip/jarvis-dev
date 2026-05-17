@@ -1,10 +1,12 @@
 import time
+import psutil
 from rich.console import Console
 from rich.layout import Layout
 from rich.panel import Panel
 from rich.live import Live
 from rich.table import Table
 from rich.markdown import Markdown
+from rich.progress import Progress, BarColumn, TextColumn
 from core.config import get_env_with_config
 from tools.analytics import project_summary
 import os
@@ -16,18 +18,17 @@ def make_layout():
     layout.split_column(
         Layout(name="header", size=3),
         Layout(name="main"),
-        Layout(name="footer", size=3),
     )
     layout["main"].split_row(
-        Layout(name="left"),
-        Layout(name="right"),
+        Layout(name="left", ratio=2),
+        Layout(name="right", ratio=1),
     )
     layout["left"].split_column(
-        Layout(name="chat", ratio=2),
-        Layout(name="logs", ratio=1),
+        Layout(name="stats", ratio=1),
+        Layout(name="hotspots", ratio=1),
     )
     layout["right"].split_column(
-        Layout(name="stats"),
+        Layout(name="system"),
         Layout(name="focus"),
     )
     return layout
@@ -35,44 +36,66 @@ def make_layout():
 class Dashboard:
     def __init__(self):
         self.layout = make_layout()
-        self.chat_history = []
-        self.logs = ["System Initialized..."]
         self.focus_path = "."
 
     def update_header(self):
         provider = get_env_with_config("provider") or "ollama"
-        self.layout["header"].update(Panel(f"JARVIS DASHBOARD | Provider: [bold cyan]{provider}[/bold cyan] | Focus: [bold yellow]{self.focus_path}[/bold yellow]", style="cyan"))
+        self.layout["header"].update(Panel(f"JARVIS SOVEREIGN DASHBOARD | Provider: [bold cyan]{provider.upper()}[/bold cyan] | Target: [bold yellow]{os.path.abspath(self.focus_path)}[/bold yellow]", border_style="cyan"))
 
     def update_stats(self):
         summary = project_summary(self.focus_path)
-        table = Table(title="Project Stats", expand=True)
-        table.add_column("Metric")
-        table.add_column("Value")
+        table = Table(expand=True, box=None)
+        table.add_column("Metric", style="white")
+        table.add_column("Value", style="bold green")
         table.add_row("Total Files", str(summary["total_files"]))
-        table.add_row("Python Lines", str(summary["total_lines"]))
-        self.layout["stats"].update(Panel(table, border_style="green"))
+        table.add_row("Total Lines", str(summary["total_lines"]))
+        
+        lang_str = ", ".join([f"{k}: {v}" for k, v in sorted(summary["languages"].items(), key=lambda x: x[1], reverse=True)[:5]])
+        table.add_row("Languages", lang_str)
+        
+        self.layout["stats"].update(Panel(table, title="Project Overview", border_style="green"))
 
-    def update_chat(self):
-        chat_md = "\n".join([f"**User:** {q}\n**JARVIS:** {a}" for q, a in self.chat_history[-3:]])
-        self.layout["chat"].update(Panel(Markdown(chat_md or "No active chat."), title="Recent Chat"))
+        # Update hotspots
+        h_table = Table(expand=True, box=None)
+        h_table.add_column("Complexity Hotspot", style="white")
+        h_table.add_column("Score", style="bold red")
+        for h in sorted(summary["hotspots"], key=lambda x: x["score"], reverse=True)[:8]:
+            h_table.add_row(os.path.basename(h["path"]), str(h["score"]))
+        
+        self.layout["hotspots"].update(Panel(h_table, title="Refactor Candidates", border_style="red"))
 
-    def update_logs(self):
-        log_text = "\n".join(self.logs[-10:])
-        self.layout["logs"].update(Panel(log_text, title="System Logs"))
+    def update_system(self):
+        # Real-time system monitoring
+        cpu = psutil.cpu_percent()
+        mem = psutil.virtual_memory().percent
+        disk = psutil.disk_usage('/').percent
+        
+        table = Table(expand=True, box=None)
+        table.add_column("Component")
+        table.add_column("Load")
+        
+        cpu_color = "red" if cpu > 80 else "yellow" if cpu > 50 else "green"
+        mem_color = "red" if mem > 80 else "yellow" if mem > 50 else "green"
+        
+        table.add_row("CPU", f"[{cpu_color}]{cpu}%[/]")
+        table.add_row("RAM", f"[{mem_color}]{mem}%[/]")
+        table.add_row("DISK", f"{disk}%")
+        
+        self.layout["system"].update(Panel(table, title="Live System Metrics", border_style="magenta"))
 
     def update_focus(self):
-        files = os.listdir(self.focus_path)[:10]
-        file_list = "\n".join([f"📄 {f}" for f in files])
-        self.layout["focus"].update(Panel(file_list, title="Focus Context"))
+        try:
+            files = [f for f in os.listdir(self.focus_path) if not f.startswith(".")]
+            file_list = "\n".join([f"📄 {f}" for f in files[:10]])
+            self.layout["focus"].update(Panel(file_list, title="Directory Preview", border_style="blue"))
+        except:
+            self.layout["focus"].update(Panel("Access Denied", title="Directory Preview"))
 
     def run(self):
         with Live(self.layout, refresh_per_second=1, screen=True):
             while True:
                 self.update_header()
                 self.update_stats()
-                self.update_chat()
-                self.update_logs()
+                self.update_system()
                 self.update_focus()
-                time.sleep(2)
-                # In a real app, this would be non-blocking and respond to events
-                # For this CLI version, we'll exit on Ctrl+C (handled by Live)
+                time.sleep(1)

@@ -50,7 +50,8 @@ def self_repair_hook(exctype, value, tb):
         """
         
         console.print("[bold cyan]Analyzing crash and generating patch...[/bold cyan]")
-        response = think("", repair_prompt)
+        res = think("", repair_prompt)
+        response = res.get("text", str(res)) if isinstance(res, dict) else str(res)
         
         # Look for TOOL: EDIT in response
         if "TOOL: EDIT" in response:

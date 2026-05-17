@@ -1,6 +1,12 @@
 import json
 import os
 import requests
+import threading
+import datetime
+import webbrowser
+import time
+import sys
+from typing import Callable
 from pathlib import Path
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
@@ -62,22 +68,22 @@ def detect_ollama():
     return None
 
 def verify_and_fix_local_llm():
-    """Proactively check local LLM settings and auto-repair if possible with ultra-fast timeout."""
+    """Proactively check local LLM settings. Do not auto-change provider or auto-run setup."""
     config = load_config()
-    if config["provider"] == "ollama":
-        try:
-            # Ultra-short timeout for startup check
-            r = requests.get(f"{config['ollama_host']}/api/tags", timeout=0.5)
-            if r.status_code != 200: raise Exception("Host not responding")
-        except:
-            console.print("[yellow]⚠️ Ollama unreachable. Attempting fast self-heal...[/yellow]")
-            auto_host = detect_ollama()
-            if auto_host:
-                config["ollama_host"] = auto_host
-                save_config(config)
-                console.print(f"[green]✅ Self-healed: Corrected Ollama host to {auto_host}[/green]")
-            else:
-                console.print("[dim]No local Ollama detected. Moving to cloud fallback if needed.[/dim]")
+    if config.get("provider") != "ollama":
+        return True
+
+    host = config.get("ollama_host", "http://localhost:11434")
+    try:
+        import requests
+        r = requests.get(f"{host}/api/tags", timeout=1.0)
+        if r.status_code == 200:
+            return True
+    except Exception:
+        console.print("[yellow]⚠️ Ollama unreachable at configured host.[/yellow]")
+        console.print("[dim]JARVIS will not auto-switch providers. You can run '/repair-ollama-cmd' or '/setup' to reconfigure.[/dim]")
+        return False
+    return True
 
 def smart_input(label, default_val, auto_detect_func=None):
     if Confirm.ask(f"Do you have the specific {label} details (e.g. URL or Key)?"):
@@ -148,3 +154,80 @@ def get_env_with_config(key):
     env_val = os.getenv(key.upper())
     if env_val: return env_val
     return config.get(key.lower(), "")
+
+def auto_config_maintenance_once():
+    """
+    One-off maintenance pass:
+    - Ensure required keys exist in config
+    - Attempt to detect Ollama and set ollama_host
+    - If Ollama down and OpenAI key present, set provider to openai (non-forced)
+    - Save config if updates made
+    Returns report dict.
+    """
+    cfg = load_config()
+    changed = False
+    report = {"timestamp": datetime.datetime.utcnow().isoformat(), "actions": []}
+
+    if "api_keys" not in cfg:
+        cfg["api_keys"] = {}
+        changed = True
+        report["actions"].append("Initialized api_keys entry.")
+
+    if cfg.get("provider") == "ollama" or not cfg.get("ollama_host"):
+        try:
+            from core.services import detect_ollama_candidates, validate_ollama
+            candidates = detect_ollama_candidates()
+            for h in candidates:
+                if not h: continue
+                v = validate_ollama(h, timeout=1.5)
+                report["actions"].append({"probe": h, "result": v})
+                if v.get("ok"):
+                    cfg["ollama_host"] = h
+                    changed = True
+                    report["actions"].append(f"Auto-set ollama_host={h}")
+                    break
+                if v.get("error_type") == "auth":
+                    cfg["ollama_host"] = h
+                    changed = True
+                    report["actions"].append(f"Saved Ollama host (auth required): {h}")
+                    break
+        except Exception as e:
+            report["actions"].append({"error": str(e)})
+
+    if cfg.get("provider") == "ollama":
+        try:
+            from core.services import validate_ollama
+            h = cfg.get("ollama_host")
+            v = validate_ollama(h, timeout=1.0) if h else None
+            if not v or not v.get("ok"):
+                if cfg.get("api_keys", {}).get("openai") or os.getenv("OPENAI_API_KEY"):
+                    cfg["provider"] = "openai"
+                    changed = True
+                    report["actions"].append("Ollama unreachable; switched provider to openai.")
+        except Exception as e:
+            report["actions"].append({"error": str(e)})
+
+    if changed:
+        save_config(cfg)
+        report["saved"] = True
+    else:
+        report["saved"] = False
+    return report
+
+def start_periodic_config_maintenance(interval_hours: int = 24):
+    """
+    Start a background daemon thread that runs auto_config_maintenance_once every interval_hours.
+    Non-blocking; returns the Thread object.
+    """
+    def _loop():
+        while True:
+            try:
+                r = auto_config_maintenance_once()
+                console.print(f"[dim]Auto-config maintenance run: {r.get('timestamp')} saved={r.get('saved')}[/dim]")
+            except Exception as e:
+                console.print(f"[red]Auto-config maintenance error: {e}[/red]")
+            time.sleep(interval_hours * 3600)
+
+    t = threading.Thread(target=_loop, daemon=True)
+    t.start()
+    return t

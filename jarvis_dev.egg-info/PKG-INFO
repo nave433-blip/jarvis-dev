@@ -1,6 +1,6 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: jarvis-dev
-Version: 0.1.7
+Version: 0.1.9
 Summary: Local AI coding assistant for macOS
 Author: Your Name
 License: MIT
@@ -25,6 +25,7 @@ Requires-Dist: prompt_toolkit
 Requires-Dist: dropbox
 Requires-Dist: google-api-python-client
 Requires-Dist: google-auth-oauthlib
+Requires-Dist: markdown
 Provides-Extra: dev
 Requires-Dist: pytest; extra == "dev"
 Requires-Dist: black; extra == "dev"

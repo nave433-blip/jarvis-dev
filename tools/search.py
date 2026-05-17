@@ -23,6 +23,24 @@ def list_files(pattern="**/*"):
     files = python_glob.glob(pattern, recursive=True)
     return "\n".join([f for f in files if "venv" not in f and ".git" not in f][:100])
 
+def web_search(query):
+    """Perform a web search using DuckDuckGo."""
+    try:
+        from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            results = [r for r in ddgs.text(query, max_results=5)]
+            if not results:
+                return "No web results found."
+            
+            out = []
+            for r in results:
+                out.append(f"Title: {r['title']}\nLink: {r['href']}\nSnippet: {r['body']}\n")
+            return "\n---\n".join(out)
+    except ImportError:
+        return "Error: 'duckduckgo-search' package not installed. Please run 'pip install duckduckgo-search'."
+    except Exception as e:
+        return f"Web search error: {e}"
+
 def system_find(name, root=None):
     """Search for a file/directory by name with sensible defaults and timeout."""
     # Prioritize home directory if no root is specified

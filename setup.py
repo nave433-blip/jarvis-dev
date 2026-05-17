@@ -9,7 +9,7 @@ setup(
         "typer", "rich", "requests", "watchdog", "sounddevice", "scipy", 
         "numpy", "sentence-transformers", "faiss-cpu", "SpeechRecognition", 
         "prompt_toolkit", "dropbox", "google-api-python-client", "google-auth-oauthlib",
-        "paramiko", "psutil", "Pillow"
+        "paramiko", "psutil", "Pillow", "keyring"
     ],
     entry_points={
         'console_scripts': [

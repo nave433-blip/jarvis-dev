@@ -44,11 +44,19 @@ class CommandHandler:
     def _match_known(self, tokens: List[str]):
         if not tokens: return None, None
         candidate = tokens[0]
-        if not candidate.startswith("/"): candidate = "/" + candidate
-        if candidate in self._registry:
-            return candidate, tokens[1:]
+        
+        # Check for exact match (with or without slash)
+        candidate_slash = candidate if candidate.startswith("/") else "/" + candidate
+        if candidate_slash in self._registry:
+            return candidate_slash, tokens[1:]
+            
+        # Only allow fuzzy matching if it explicitly starts with '/'
+        # This prevents natural language from being misidentified as a command.
+        if not candidate.startswith("/"):
+            return None, None
+        
         keys = list(self._registry.keys())
-        close = difflib.get_close_matches(candidate, keys, n=1, cutoff=0.6)
+        close = difflib.get_close_matches(candidate, keys, n=1, cutoff=0.7)
         if close:
             return close[0], tokens[1:]
         return None, None

@@ -14,7 +14,8 @@ class Handler(FileSystemEventHandler):
                     code = f.read()
 
                 print(f"\n[WATCHER] Analyzing {event.src_path}...")
-                analysis = think(code, "analyze changes")
+                res = think(code, "analyze changes")
+                analysis = res.get("text", str(res)) if isinstance(res, dict) else str(res)
                 print("Analysis complete.")
                 
                 # Store analysis in memory

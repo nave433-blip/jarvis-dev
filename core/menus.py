@@ -173,6 +173,7 @@ def personality_menu():
 
 def models_menu():
     """Intelligent orchestration and manual selection of LLM providers."""
+    from core.services import get_api_key, validate_provider_connection
     config = load_config()
     current_p = config.get("provider", "ollama")
     current_m = config.get("jarvis_model", "llama3")
@@ -193,8 +194,58 @@ def models_menu():
     [m] Manual Select - Override all automation and pick a specific provider below.
     """
     console.print(modes_info)
+
+    p_mapping = {
+        "1": "ollama", "2": "openai", "3": "gemini", "4": "claude", "5": "cohere", 
+        "6": "mistral", "7": "nvidia", "8": "glm", "9": "deepseek", "0": "qwen",
+        "g": "gemma", "k": "kimi", "p": "perplexity", "r": "granite", "l": "laguna",
+        "v": "vllm", "y": "sglang", "f": "lfm", "e": "essential", "o": "olmo",
+        "c": "cogito", "i": "minimax", "s": "stability", "u": "upstage", "z": "groq",
+        "x": "xiaomi", "t": "tencent", "q": "kwaipilot"
+    }
+
+    # Generate Status Table
+    status_table = Table(title="Intelligence Provider Status", border_style="dim")
+    status_table.add_column("Key", style="cyan", justify="center")
+    status_table.add_column("Provider", style="white")
+    status_table.add_column("Status", justify="center")
+    status_table.add_column("Key", style="cyan", justify="center")
+    status_table.add_column("Provider", style="white")
+    status_table.add_column("Status", justify="center")
+
+    keys = list(p_mapping.keys())
+    for i in range(0, len(keys), 2):
+        row = []
+        # Col 1
+        k1 = keys[i]
+        p1 = p_mapping[k1]
+        is_linked1 = False
+        if p1 in ["ollama", "vllm", "sglang", "laguna", "llama_cpp", "gpt4all", "local"]:
+            is_linked1 = config.get(f"{p1}_host") is not None
+        else:
+            is_linked1 = get_api_key(p1) is not None
+        status1 = "[bold green]✓[/bold green]" if is_linked1 else "[bold red]✘[/bold red]"
+        row.extend([k1, p1.upper(), status1])
+
+        # Col 2
+        if i + 1 < len(keys):
+            k2 = keys[i+1]
+            p2 = p_mapping[k2]
+            is_linked2 = False
+            if p2 in ["ollama", "vllm", "sglang", "laguna", "llama_cpp", "gpt4all", "local"]:
+                is_linked2 = config.get(f"{p2}_host") is not None
+            else:
+                is_linked2 = get_api_key(p2) is not None
+            status2 = "[bold green]✓[/bold green]" if is_linked2 else "[bold red]✘[/bold red]"
+            row.extend([k2, p2.upper(), status2])
+        else:
+            row.extend(["", "", ""])
+        
+        status_table.add_row(*row)
+
+    console.print(status_table)
     
-    choice = Prompt.ask("Select mode or provider", choices=["a", "s", "x", "m", "1", "2", "3", "4", "5", "6", "7", "8", "9", "g", "b"], default="b")
+    choice = Prompt.ask("Select mode or provider", choices=["a", "s", "x", "m", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "g", "k", "p", "r", "l", "v", "y", "f", "e", "o", "c", "i", "s", "u", "z", "b"], default="b")
     
     if choice == "a":
         config["model_mode"] = "auto-offline"
@@ -217,15 +268,51 @@ def models_menu():
         console.print("[green]✅ Switched to Manual mode. Please select your provider below.[/green]")
         return
 
-    p_mapping = {"1": "ollama", "2": "openai", "3": "gemini", "4": "claude", "5": "grok", "6": "mistral", "7": "nvidia", "8": "lm_studio", "9": "llama_cpp", "g": "gpt4all"}
+    p_mapping = {
+        "1": "ollama", "2": "openai", "3": "gemini", "4": "claude", "5": "cohere", 
+        "6": "mistral", "7": "nvidia", "8": "glm", "9": "deepseek", "0": "qwen",
+        "g": "gemma", "k": "kimi", "p": "perplexity", "r": "granite", "l": "laguna",
+        "v": "vllm", "y": "sglang", "f": "lfm", "e": "essential", "o": "olmo",
+        "c": "cogito", "i": "minimax", "s": "stability", "u": "upstage", "z": "groq",
+        "x": "xiaomi", "t": "tencent", "q": "kwaipilot"
+    }
     if choice in p_mapping:
         config["model_mode"] = "manual"
         provider = p_mapping[choice]
         config["provider"] = provider
-        models = {"ollama": ["llama3", "mistral", "codellama", "phi3"], "openai": ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"], "gemini": ["gemini-1.5-pro", "gemini-1.5-flash"], "claude": ["claude-3-5-sonnet-20240620", "claude-3-opus-20240229"], "grok": ["grok-beta"], "mistral": ["mistral-large-latest", "open-mixtral-8x22b"], "nvidia": ["nvidia/llama-3.1-405b-instruct", "nvidia/nemotron-4-340b-instruct"], "lm_studio": ["local-model"], "llama_cpp": ["local-model"], "gpt4all": ["Mistral-7B-Instruct", "Llama-3-8B-Instruct"]}
+        models = {
+            "ollama": ["nave433/jarvis", "llama3.3", "llama3.2", "phi4", "muse-spark"],
+            "openai": ["gpt-5.5", "gpt-4o", "o1-preview"],
+            "gemini": ["gemini-3.1-pro", "gemini-3-flash-preview"],
+            "claude": ["claude-4.7", "claude-3-5-sonnet-20240620"],
+            "cohere": ["command-r-plus", "command-r"],
+            "mistral": ["mistral-medium-3.5", "mistral-large-latest"],
+            "nvidia": ["nemotron-3-super", "nemotron-3-nano"],
+            "glm": ["glm-5.1", "glm-5", "glm-4.7"],
+            "deepseek": ["deepseek-v4-pro", "deepseek-v3.2"],
+            "qwen": ["qwen3.6", "qwen3.5"],
+            "gemma": ["gemma-4-27b", "gemma-4-9b"],
+            "kimi": ["kimi-k2.6", "kimi-k2.5"],
+            "perplexity": ["llama-3.1-sonar-huge-128k-online"],
+            "granite": ["granite-4.1", "granite-3.1-8b-instruct"],
+            "laguna": ["laguna-xs.2-33b"],
+            "vllm": ["meta-llama/Meta-Llama-3-70B-Instruct"],
+            "sglang": ["meta-llama/Meta-Llama-3-8B-Instruct"],
+            "lfm": ["lfm2.5-thinking", "lfm2-24b-a2b"],
+            "essential": ["rnj-1"],
+            "olmo": ["olmo-3.1", "olmo-2"],
+            "cogito": ["cogito-2.1"],
+            "minimax": ["minimax-m2.7", "minimax-m2.5"],
+            "stability": ["stablelm2", "stable-code"],
+            "upstage": ["solar-pro"],
+            "groq": ["llama-3.3-70b-versatile"],
+            "xiaomi": ["mimo-v2.5", "mimo-v2-pro"],
+            "tencent": ["hy3-preview"],
+            "kwaipilot": ["kat-coder-pro-v2"]
+        }
         console.print(f"\n[bold white]Recommended Models for {provider.upper()}:[/bold white]")
-        for m in models[provider]: console.print(f"→ {m}")
-        new_model = Prompt.ask("Enter exact model identifier", default=models[provider][0])
+        for m in models.get(provider, ["default"]): console.print(f"→ {m}")
+        new_model = Prompt.ask("Enter exact model identifier", default=models.get(provider, ["default"])[0])
         config["jarvis_model"] = new_model
         if provider == "gemini": config["gemini_model"] = new_model
         save_config(config)
@@ -283,31 +370,71 @@ def ssh_command(args):
 
 def connect_menu():
     """Streamlined interface to link AI accounts and save API keys."""
+    from core.services import set_api_key
     console.print(Panel("🌐 [bold cyan]Account Connection Center[/bold cyan]", border_style="cyan"))
     console.print("Select a provider to get your key and save it to JARVIS:")
-    console.print("\n[1] Google Gemini | [2] OpenAI | [3] Anthropic | [4] xAI (Grok)")
-    console.print("[5] GitHub        | [6] Ollama | [b] Back")
+    console.print("\n[1] Gemini  | [2] OpenAI   | [3] Anthropic | [4] Gemma 4   | [5] Cohere")
+    console.print("[6] Mistral | [7] NVIDIA   | [8] GLM       | [9] DeepSeek  | [0] Qwen")
+    console.print("[k] Kimi    | [p] Perplexity | [r] Granite  | [s] Stability | [u] Upstage")
+    console.print("[v] vLLM    | [y] SGLang   | [f] Liquid   | [e] Essential | [z] Groq")
+    console.print("[l] Laguna XS.2 | [r] Replit  | [b] Back")
     
-    choice = Prompt.ask("Choice", choices=["1", "2", "3", "4", "5", "6", "b"], default="b")
+    choice = Prompt.ask("Choice", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "k", "p", "r", "s", "u", "v", "y", "f", "e", "z", "l", "r", "b"], default="b")
     
     mapping = {
-        "1": {"name": "Gemini", "url": "https://aistudio.google.com/app/apikey", "key": "gemini_api_key"},
-        "2": {"name": "OpenAI", "url": "https://platform.openai.com/api-keys", "key": "openai_api_key"},
-        "3": {"name": "Anthropic", "url": "https://console.anthropic.com/settings/keys", "key": "anthropic_api_key"},
-        "4": {"name": "Grok", "url": "https://console.x.ai/", "key": "xai_api_key"},
-        "5": {"name": "GitHub", "url": "https://github.com/settings/tokens", "key": "github_token"},
-        "6": {"name": "Ollama", "url": "https://ollama.com/", "key": "ollama_token"}
+        "1": {"name": "gemini", "display": "Google Gemini", "url": "https://aistudio.google.com/app/apikey"},
+        "2": {"name": "openai", "display": "OpenAI", "url": "https://platform.openai.com/api-keys"},
+        "3": {"name": "anthropic", "display": "Anthropic", "url": "https://console.anthropic.com/settings/keys"},
+        "4": {"name": "gemma", "display": "Gemma 4", "url": "https://aistudio.google.com/app/apikey"},
+        "5": {"name": "cohere", "display": "Cohere", "url": "https://dashboard.cohere.com/api-keys"},
+        "6": {"name": "mistral", "display": "Mistral AI", "url": "https://console.mistral.ai/api-keys/"},
+        "7": {"name": "nvidia", "display": "NVIDIA NIM", "url": "https://build.nvidia.com/"},
+        "8": {"name": "glm", "display": "Z.ai GLM", "url": "https://open.bigmodel.cn/usercenter/apikeys"},
+        "9": {"name": "deepseek", "display": "DeepSeek", "url": "https://platform.deepseek.com/api_keys"},
+        "0": {"name": "qwen", "display": "Alibaba Qwen", "url": "https://dashscope.console.aliyun.com/apiKey"},
+        "k": {"name": "kimi", "display": "Moonshot Kimi", "url": "https://platform.moonshot.cn/console/api-keys"},
+        "p": {"name": "perplexity", "display": "Perplexity", "url": "https://www.perplexity.ai/settings/api"},
+        "r": {"name": "granite", "display": "IBM Granite", "url": "https://cloud.ibm.com/watsonx"},
+        "s": {"name": "stability", "display": "Stability AI", "url": "https://key.stability.ai/"},
+        "u": {"name": "upstage", "display": "Upstage Solar", "url": "https://console.upstage.ai/"},
+        "v": {"name": "vllm", "display": "vLLM", "host_only": True},
+        "y": {"name": "sglang", "display": "SGLang", "host_only": True},
+        "f": {"name": "lfm", "display": "Liquid AI", "host_only": True},
+        "e": {"name": "essential", "display": "Essential AI", "url": "https://essential.ai/"},
+        "z": {"name": "groq", "display": "Groq", "url": "https://console.groq.com/keys"},
+        "l": {"name": "laguna", "display": "Laguna XS.2", "host_only": True},
+        "r": {"name": "replit", "display": "Replit API", "url": "https://replit.com/teams/join"}
     }
     
     if choice in mapping:
         info = mapping[choice]
-        console.print(f"\n[bold]1. Get your key here:[/bold] {info['url']}")
-        if Confirm.ask(f"Do you want to save your {info['name']} key now?"):
-            key_val = Prompt.ask(f"Paste your {info['name']} key", password=True)
-            config = load_config()
-            config[info['key']] = key_val
-            save_config(config)
-            console.print(f"[green]✅ {info['name']} key saved successfully![/green]")
+        
+        if info.get("host_only"):
+            host = Prompt.ask(f"Enter host URL for {info['display']} (e.g. http://localhost:8000)")
+            if host:
+                config = load_config()
+                config[f"{info['name']}_host"] = host
+                save_config(config)
+                console.print(f"[green]✅ {info['display']} host saved successfully![/green]")
+            return
+
+        import webbrowser
+        console.print(f"\n[bold]1. Opening login page for {info['display']}:[/bold] {info['url']}")
+        try:
+            webbrowser.open(info['url'])
+        except Exception:
+            pass
+            
+        if Confirm.ask(f"Do you want to save your {info['display']} key now?"):
+            key_val = Prompt.ask(f"Paste your {info['display']} key", password=True)
+            if key_val:
+                res = set_api_key(info['name'], key_val)
+                if res.get("ok"):
+                    console.print(f"[green]✅ {info['display']} key saved securely to keychain![/green]")
+                else:
+                    console.print(f"[red]❌ Failed to save {info['display']} key.[/red]")
+            else:
+                console.print("[yellow]Aborted: No key entered.[/yellow]")
 
 def robust_help():
     """Universal Command Reference & Technical Documentation."""
@@ -359,7 +486,6 @@ def cloud_menu():
     [3] [bold cyan]iCloud Drive:[/bold cyan] Direct access to Apple Cloud files (macOS only).
     """
     console.print(Panel(info, title="Cloud Storage", border_style="cyan"))
-    choice = Prompt.ask("Select platform", choices=["1", "2", "3", "b"], default="b")
     if choice == "1": cloud("gdrive")
     elif choice == "2": cloud("dropbox")
     elif choice == "3": cloud("icloud")

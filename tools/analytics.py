@@ -3,17 +3,23 @@ import ast
 
 def analyze_complexity(file_path):
     if not os.path.exists(file_path):
-        return f"Error: File {file_path} not found."
+        return {"functions": 0, "classes": 0, "lines": 0, "complexity_score": 0, "error": f"File {file_path} not found."}
     
-    with open(file_path, "r") as f:
-        tree = ast.parse(f.read())
-
     metrics = {
         "functions": 0,
         "classes": 0,
-        "lines": sum(1 for line in open(file_path)),
+        "lines": 0,
         "complexity_score": 0
     }
+
+    try:
+        with open(file_path, "r") as f:
+            content = f.read()
+            metrics["lines"] = len(content.splitlines())
+            tree = ast.parse(content)
+    except Exception as e:
+        # Fallback for non-parseable files (e.g., Python 2)
+        return metrics
 
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):

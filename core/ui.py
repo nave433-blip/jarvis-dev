@@ -7,6 +7,26 @@ from core.update import CURRENT_VERSION
 
 console = Console()
 
+def display_chat_message(role: str, text: str):
+    """Display a message in a Gemini-style high-fidelity ASCII box."""
+    from rich.box import ROUNDED
+    from rich.panel import Panel
+    from rich.markdown import Markdown
+    
+    color = "cyan" if role.lower() == "jarvis" else "green"
+    icon = "🧠" if role.lower() == "jarvis" else "👤"
+    
+    panel = Panel(
+        Markdown(text),
+        title=f"[bold {color}]{icon} {role.upper()}[/bold {color}]",
+        title_align="left",
+        border_style=color,
+        box=ROUNDED,
+        padding=(1, 2)
+    )
+    console.print("\n")
+    console.print(panel)
+
 def display_welcome():
     splash_text = f"""
     [bold cyan]JARVIS[/bold cyan] [white]v{CURRENT_VERSION}[/white]
