@@ -33,9 +33,9 @@ def check_system_health():
                 continue
             
             try:
-                # Run check command with 15s timeout to prevent startup hangs
+                # Run check command with 30s timeout to prevent startup hangs
                 cmd = info["check"]
-                res = subprocess.run(cmd, shell=True, cwd=path, capture_output=True, text=True, timeout=15.0)
+                res = subprocess.run(cmd, shell=True, cwd=path, capture_output=True, text=True, timeout=30.0)
                 
                 if res.returncode == 0:
                     results.append({"name": name, "status": "ONLINE", "error": None})
