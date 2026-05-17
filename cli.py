@@ -137,7 +137,7 @@ def interactive():
                 
                 # --- Routing Table ---
                 if cmd == "/chat": chat(args or Prompt.ask("Question"), prompt=prompt_name)
-                elif cmd == "/fix": fix(args or Prompt.ask("Issue to fix"), prompt=prompt_name, ui_hint=ui_hint)
+                elif cmd == "/fix": debug_loop(args or Prompt.ask("Issue to fix"), prompt=prompt_name, ui_hint=ui_hint)
                 elif cmd == "/plan": plan(args or Prompt.ask("Task for strategy"))
                 elif cmd == "/forge": forge(args or Prompt.ask("Task to forge"))
                 elif cmd == "/decode": decode(args or Prompt.ask("Content to decode"))
