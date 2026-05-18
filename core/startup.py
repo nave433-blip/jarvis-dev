@@ -26,7 +26,11 @@ console = Console()
 # Which providers to check by default at startup (standardized names)
 DEFAULT_PROVIDERS = [
     "ollama", "openai", "gemini", "anthropic", "mistral", "deepseek", 
+<<<<<<< HEAD
     "qwen", "kimi", "perplexity", "granite", "nemotron", "groq", "together"
+=======
+    "qwen", "kimi", "perplexity", "granite", "nemotron", "groq"
+>>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
 ]
 
 def _interactive_connect(provider: str) -> Dict[str, Any]:
@@ -37,6 +41,7 @@ def _interactive_connect(provider: str) -> Dict[str, Any]:
     provider = provider.lower()
     result = {"provider": provider, "connected": False, "message": ""}
 
+<<<<<<< HEAD
     # Guide for free providers
     FREE_GUIDE = {
         "groq": "Get a free API key at https://groq.com (Fastest inference for Llama 3.3/Mixtral)",
@@ -48,6 +53,10 @@ def _interactive_connect(provider: str) -> Dict[str, Any]:
     try:
         if provider == "ollama":
             console.print(Panel("Ollama: Best for true local privacy. Download from https://ollama.com\nRecommended: `ollama run deepseek-r1` or `llama3.2`", title="Ollama Guide"))
+=======
+    try:
+        if provider == "ollama":
+>>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
             host = Prompt.ask("Enter Ollama host URL", default=load_config().get("ollama_host", "http://localhost:11434"))
             if host:
                 cfg = load_config()
@@ -60,11 +69,29 @@ def _interactive_connect(provider: str) -> Dict[str, Any]:
                     result.update({"connected": False, "message": f"Ollama validation: {v.get('error')}"})
             return result
 
+<<<<<<< HEAD
         # Cloud API key providers
         if provider in ("openai", "anthropic", "deepseek", "kimi", "mistral", "perplexity", "granite", "groq", "together", "replit", "qwen"):
             if provider in FREE_GUIDE:
                 console.print(Panel(FREE_GUIDE[provider], title=f"{provider.upper()} Guide", border_style="green"))
             
+=======
+        if provider in ("nemotron", "qwen", "gpt4all", "llama_cpp", "vllm", "sglang", "laguna"):
+            host = Prompt.ask(f"Enter host URL for {provider}", default=load_config().get(f"{provider}_host", ""))
+            if host:
+                cfg = load_config()
+                cfg[f"{provider}_host"] = host
+                save_config(cfg)
+                v = svc.validate_provider_connection(provider, extra={"host": host})
+                if v.get("ok"):
+                    result.update({"connected": True, "message": f"{provider} reachable at {host}"})
+                else:
+                    result.update({"connected": False, "message": f"{provider} validation: {v.get('error')}"})
+            return result
+
+        # Cloud API key providers
+        if provider in ("openai", "anthropic", "deepseek", "kimi", "mistral", "perplexity", "granite", "groq", "replit"):
+>>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
             key = Prompt.ask(f"Enter API key for {provider} (leave blank to skip)", default="", password=True)
             if key:
                 svc.set_api_key(provider, key)
@@ -123,6 +150,7 @@ def check_provider(provider: str, auto: bool = False) -> Dict[str, Any]:
     try:
         cfg = load_config()
         extra = {}
+<<<<<<< HEAD
         
         if provider == "ollama":
             # Proactive check
@@ -138,11 +166,18 @@ def check_provider(provider: str, auto: bool = False) -> Dict[str, Any]:
         elif provider in ("nemotron", "qwen", "gpt4all", "llama_cpp", "vllm", "sglang", "laguna"):
             extra["host"] = cfg.get(f"{provider}_host")
             v = svc.validate_provider_connection(provider, extra=extra)
+=======
+        if provider == "ollama":
+            extra["host"] = cfg.get("ollama_host")
+        elif provider in ("nemotron", "qwen", "gpt4all", "llama_cpp", "vllm", "sglang", "laguna"):
+            extra["host"] = cfg.get(f"{provider}_host")
+>>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
         else:
             # try Keychain via svc
             api_key = svc.get_api_key(provider)
             if api_key:
                 extra["key"] = api_key
+<<<<<<< HEAD
             v = svc.validate_provider_connection(provider, extra=extra)
 
         if provider != "ollama": # already handled above
@@ -151,6 +186,15 @@ def check_provider(provider: str, auto: bool = False) -> Dict[str, Any]:
             status["message"] = v.get("error") or v.get("note") or "Connected" if v.get("ok") else "Missing credentials"
 
         if not status["ok"] and not auto:
+=======
+
+        v = svc.validate_provider_connection(provider, extra=extra)
+        status["ok"] = v.get("ok", False)
+        status["validated"] = v.get("ok", False)
+        status["message"] = v.get("error") or v.get("note") or "Connected" if v.get("ok") else "Missing credentials"
+
+        if not v.get("ok") and not auto:
+>>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
             # Check if this is a "Core" provider worth bothering the user about
             CORE_PROVIDERS = ["ollama", "openai", "gemini"]
             if provider in CORE_PROVIDERS:
@@ -169,6 +213,7 @@ def startup_check_and_login(auto: bool = False, providers: Optional[List[str]] =
     """
     Main entry to call at application startup.
     """
+<<<<<<< HEAD
     # Auto-scan network for Ollama servers
     from tools.network import scan_network_for_ollama
     console.print("[dim]Scanning network for Ollama instances...[/dim]")
@@ -195,6 +240,8 @@ def startup_check_and_login(auto: bool = False, providers: Optional[List[str]] =
     except Exception as e:
         console.print(f"[dim]Could not auto-detect models: {e}[/dim]")
 
+=======
+>>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
     report = {"auto": bool(auto), "results": [], "maintenance_started": False}
     provs = providers or DEFAULT_PROVIDERS
     
