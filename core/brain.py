@@ -128,24 +128,33 @@ class OllamaProvider(LLMProvider):
         if options:
             payload["options"] = options
         
-        try:
-            r = requests.post(self.url, json=payload, timeout=15)
-            r.raise_for_status()
-            return r.json()["message"]["content"]
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
-            # Rotate host and retry once
-            self.host = random.choice([h for h in self.hosts if h != self.host])
-            self.url = f"{self.host}/api/chat"
-            logger.warning(f"Ollama timeout on {self.host}. Retrying on {self.host}...")
-            
+        # Try local/network hosts first
+        for host in [self.host] + [h for h in self.hosts if h != self.host]:
             try:
-                r = requests.post(self.url, json=payload, timeout=15)
+                url = f"{host}/api/chat"
+                r = requests.post(url, json=payload, timeout=15)
+                r.raise_for_status()
+                return r.json()["message"]["content"]
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+                logger.warning(f"Ollama host {host} failed.")
+                continue
+
+        # Try Cloud Ollama host
+        cfg = load_config()
+        cloud_host = cfg.get("ollama_cloud_host")
+        if cloud_host:
+            logger.info(f"Trying Cloud Ollama host: {cloud_host}")
+            try:
+                r = requests.post(f"{cloud_host}/api/chat", json=payload, timeout=20)
                 r.raise_for_status()
                 return r.json()["message"]["content"]
             except Exception as e:
-                logger.warning(f"Ollama fallback failed. Falling back to cloud...")
-                from core.services import call_model
-                return call_model("gemini", messages_or_text=prompt).get("text", "Error: Fallback failed.")
+                logger.warning(f"Cloud Ollama failed: {e}")
+
+        # Final fallback to configured cloud provider
+        logger.warning(f"All Ollama resources exhausted. Falling back to cloud...")
+        from core.services import call_model
+        return call_model("gemini", messages_or_text=prompt).get("text", "Error: Fallback failed.")
 
 class OpenAICompatibleProvider(LLMProvider):
     def __init__(self, api_key, url, model):
@@ -372,11 +381,15 @@ import litellm
 def get_task_category(task: str) -> str:
     """Classify task to route to best models."""
     prompt = f"Categorize this task into one of these: [coding, creative, research, general]. Task: {task}. Return ONLY the category name."
-    # Use a fast local model for classification
-    return litellm.completion(
-        model="groq/llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}]
-    ).choices[0].message.content.strip().lower()
+    try:
+        # Use a fast local model for classification
+        return litellm.completion(
+            model="groq/llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}]
+        ).choices[0].message.content.strip().lower()
+    except Exception as e:
+        console.print(f"[yellow]Classification failed ({e}), defaulting to 'general'[/yellow]")
+        return "general"
 
 def multibrain_think(task: str, providers: Optional[List[str]] = None) -> Dict[str, Any]:
     """
@@ -399,6 +412,9 @@ def multibrain_think(task: str, providers: Optional[List[str]] = None) -> Dict[s
         "general": ["groq/llama-3.3-70b-versatile", "openai/gpt-4o-mini"]
     }
     
+    # Map model strings to LiteLLM format if necessary (or use direct strings)
+    model_map = {m: m for m in [m for models in routing_table.values() for m in models]}
+
     target_models = routing_table.get(category, routing_table["general"])
     
     set_warp_status(f"Multi-Brain: Routing to {category} experts...")
@@ -407,10 +423,10 @@ def multibrain_think(task: str, providers: Optional[List[str]] = None) -> Dict[s
     results = []
     
     # Define batch completion
-    def ask_litellm(p):
+    def ask_litellm(model_str):
         try:
             return litellm.completion(
-                model=model_map[p],
+                model=model_str,
                 messages=[{"role": "system", "content": "You are a specialized AI expert. Provide concise, accurate technical output grounded in provided context."},
                           {"role": "user", "content": f"Context: {search_context}\n\nTask: {task}"}],
                 timeout=30
@@ -424,16 +440,21 @@ def multibrain_think(task: str, providers: Optional[List[str]] = None) -> Dict[s
         for future in as_completed(futures):
             m = futures[future]
             res = future.result()
-            if not res.startswith("Error:"):
+            if not res or res.startswith("Error:"):
+                console.print(f"  [red]✗[/red] {m.upper()} failed: {res}")
+            else:
                 results.append({"provider": m, "text": res})
                 console.print(f"  [green]✓[/green] {m.upper()} responded.")
-            else:
-                console.print(f"  [red]✗[/red] {m.upper()} failed: {res}")
-
 
     if not results:
-        clear_warp_status()
-        return {"ok": False, "error": "All targeted providers failed to respond."}
+        # Fallback to local Ollama if all cloud/multibrain providers fail
+        console.print("[yellow]All selected providers failed. Falling back to local Ollama...[/yellow]")
+        try:
+            res = OllamaProvider().ask(task)
+            return {"ok": True, "text": res or "Ollama returned empty response.", "provider": "local"}
+        except Exception as e:
+            clear_warp_status()
+            return {"ok": False, "error": f"Fallback to Ollama failed: {e}"}
 
     # 3. Synthesis Stage (Master Brain)
     set_warp_status("Multi-Brain: Synthesizing consensus...")

@@ -20,6 +20,7 @@ DEFAULT_CONFIG = {
     "provider": "ollama",
     "ollama_host": "http://localhost:11434",
     "ollama_hosts": ["http://localhost:11434"],
+    "ollama_cloud_host": "",
     "ollama_token": "", # Added for account connectivity
     "lm_studio_host": "http://localhost:1234",
     "llama_cpp_host": "http://localhost:8080",

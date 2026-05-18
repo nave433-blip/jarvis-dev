@@ -119,9 +119,6 @@ Assistant: {"type":"internal","target":"locate","args":["/etd","n4v3r41n"],"conf
 User: "fix broken code in n4v3r41n"
 Assistant: {"type":"internal","target":"fix","args":["n4v3r41n"],"confirm":false,"ui":{"title":"Fix n4v3r41n","subtitle":"Autonomous repair cycle","markdown":"Analyzing project directory for bugs.","buttons":[{"label":"Confirm Fix","action":"confirm","primary":true}]}}
 
-User: "analyze, fix, repair, build, make, fix error all sub folder programs in tr4mpass"
-Assistant: {"type":"internal","target":"fix","args":["tr4mpass"],"confirm":true,"ui":{"title":"Deep Repair tr4mpass","subtitle":"Recursive analyze/fix/build cycle","markdown":"Initiating full-stack recursive analysis and repair on tr4mpass directory.","buttons":[{"label":"Confirm Repair","action":"confirm","primary":true}]}}
-
 User: "run git status"
 Assistant: {"type":"shell","target":"git status","args":[],"confirm":false,"ui":{"title":"Run git status","subtitle":"Read-only status check","buttons":[{"label":"Run","action":"run","primary":true}]}}
 

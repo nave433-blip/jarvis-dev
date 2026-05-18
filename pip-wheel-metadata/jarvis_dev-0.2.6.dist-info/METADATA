@@ -1,4 +1,4 @@
-Metadata-Version: 2.4
+Metadata-Version: 2.1
 Name: jarvis-dev
 Version: 0.2.6
 Summary: Local AI coding assistant for macOS
@@ -21,7 +21,7 @@ Requires-Dist: numpy
 Requires-Dist: sentence-transformers
 Requires-Dist: faiss-cpu
 Requires-Dist: SpeechRecognition
-Requires-Dist: prompt_toolkit
+Requires-Dist: prompt-toolkit
 Requires-Dist: dropbox
 Requires-Dist: google-api-python-client
 Requires-Dist: google-auth-oauthlib

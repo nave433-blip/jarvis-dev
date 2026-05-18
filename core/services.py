@@ -23,11 +23,8 @@ KEYRING_SERVICE_NAME = "jarvis_cli"
 DEFAULT_MODELS_KEY = "default_models"
 KNOWN_PROVIDERS = [
     "openai", "ollama", "anthropic", "gemini", "mistral", "gpt4all", "llama_cpp", "vllm", "sglang", 
-<<<<<<< HEAD
     "nemotron", "qwen", "deepseek", "kimi", "perplexity", "granite", "laguna", "gemma", "together", 
-=======
     "nemotron", "qwen", "deepseek", "kimi", "perplexity", "granite", "laguna", "gemma", 
->>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
     "glm", "minimax", "lfm", "essential", "olmo", "cogito", "meta", "microsoft", "minicpm", 
     "smollm", "tii", "nous", "lg", "cohere", "yi", "upstage", "groq", "internlm", 
     "athene", "stability", "reflection", "z_ai", "midjourney", "flux", "sora", "kling", "whisper",
@@ -96,11 +93,8 @@ def get_api_key(provider: str) -> Optional[str]:
         "yi": "YI_API_KEY",
         "upstage": "UPSTAGE_API_KEY",
         "groq": "GROQ_API_KEY",
-<<<<<<< HEAD
         "together": "TOGETHER_API_KEY",
         "qwen": "DASHSCOPE_API_KEY",
-=======
->>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
         "internlm": "INTERNLM_API_KEY",
         "stability": "STABILITY_API_KEY",
         "midjourney": "MIDJOURNEY_API_KEY",
@@ -153,7 +147,6 @@ def set_default_model(provider: str, model_name: str):
 def get_default_model(provider: str) -> Optional[str]:
     return _load_default_models().get(provider.lower())
 
-<<<<<<< HEAD
 def get_connected_providers() -> List[str]:
     """Return a list of all providers that have an API key or host configured."""
     connected = []
@@ -186,8 +179,6 @@ def validate_gemini(key: str, timeout: float = 5.0) -> Dict:
     except Exception as e:
         return {"ok": False, "error": str(e), "error_type": "unreachable"}
 
-=======
->>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
 # --------------------
 # Validation helpers (enhanced)
 # --------------------
@@ -210,24 +201,20 @@ def validate_ollama(host: str, timeout: float = 2.0) -> Dict:
     If 401 is seen, marks as auth-required.
     """
     host = host.rstrip("/")
-<<<<<<< HEAD
     # /api/tags is the most reliable endpoint for checking health and models
     endpoints = ["/api/tags", "/api/models", "/api/health", "/api/completions", ""]
     last_exc = None
     for p in endpoints:
         url = host + p if p else host
-=======
     endpoints = ["/api/models", "/api/tags", "/api/health", "/api/completions"]
     for p in endpoints:
         url = host + p
->>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
         try:
             r = requests.get(url, timeout=timeout)
             if r.status_code == 200:
                 return {"ok": True, "provider": "ollama", "endpoint": url}
             if r.status_code == 401:
                 return {"ok": False, "error": "Ollama requires authentication (401)", "error_type": "auth", "endpoint": url}
-<<<<<<< HEAD
             # If we get a 404, we continue to the next endpoint
             if r.status_code == 404:
                 continue
@@ -239,17 +226,6 @@ def validate_ollama(host: str, timeout: float = 2.0) -> Dict:
             continue
     # none responded 200/401
     return {"ok": False, "error": f"Could not reach Ollama at {host}. Error: {last_exc}", "error_type": "unreachable"}
-=======
-            # 403 and 4xx other codes -> auth/permission
-            if 400 <= r.status_code < 500:
-                return {"ok": False, "error": f"Ollama returned HTTP {r.status_code}", "error_type": "auth", "endpoint": url}
-        except requests.exceptions.RequestException as e:
-            # continue to try other endpoints
-            last_exc = e
-            continue
-    # none responded 200/401
-    return {"ok": False, "error": f"Could not reach Ollama at {host} (checked {len(endpoints)} endpoints)", "error_type": "unreachable"}
->>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
 
 def validate_generic_host(host: str, timeout: float = 2.0) -> Dict:
     try:
@@ -287,11 +263,8 @@ def validate_provider_connection(provider: str, extra: Optional[Dict[str, Any]] 
         key = extra.get("key") or get_api_key("gemini")
         if not key:
             return {"ok": False, "error": "Gemini key not configured", "error_type": "unauthorized"}
-<<<<<<< HEAD
         return validate_gemini(key)
-=======
         return {"ok": True, "provider": "gemini", "note": "Key present (OAuth flows not validated)"}
->>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
     return {"ok": False, "error": f"Provider '{provider}' not supported for validation.", "error_type": "other"}
 
 # --------------------
@@ -509,7 +482,6 @@ def detect_ollama_candidates() -> List[str]:
         candidates.insert(0, ch)
     return candidates
 
-<<<<<<< HEAD
 def ensure_ollama() -> Dict:
     """
     High-level utility to ensure Ollama is installed, running, and reachable.
@@ -544,8 +516,6 @@ def ensure_ollama() -> Dict:
         
     return {"ok": False, "error": "Ollama is not installed. Download it from https://ollama.com", "error_type": "missing"}
 
-=======
->>>>>>> 9e66ec40d76fc19c950679b2764e4723752540ae
 def repair_ollama(host: Optional[str] = None, open_app_if_mac: bool = True, prompt_for_host: bool = True) -> Dict:
     """
     Improved repair helper that:

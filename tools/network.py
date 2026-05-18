@@ -1,34 +1,7 @@
 import socket
-from concurrent.futures import ThreadPoolExecutor
-
-def scan_network_for_ollama():
-    """Scan the local subnet for Ollama instances on port 11434."""
-    # Assuming standard class C network, adapt if necessary
-    subnet = "192.168.1"
-    targets = [f"{subnet}.{i}" for i in range(1, 255)]
-    found_hosts = []
-
-    def check_host(ip):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(0.2)
-                if s.connect_ex((ip, 11434)) == 0:
-                    return f"http://{ip}:11434"
-        except:
-            pass
-        return None
-
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        results = executor.map(check_host, targets)
-        for res in results:
-            if res:
-                found_hosts.append(res)
-    
-    return found_hosts
-
 import subprocess
+import os
 import platform
-import socket
 from rich.console import Console
 from rich.table import Table
 
@@ -38,6 +11,7 @@ def get_local_ip():
     """Get the local IP address of the machine."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
+        # doesn't even have to be reachable
         s.connect(('10.255.255.255', 1))
         IP = s.getsockname()[0]
     except Exception:
@@ -89,3 +63,29 @@ def scan_ports(ip, port_range=(1, 1024)):
         s.close()
     
     return open_ports
+
+from concurrent.futures import ThreadPoolExecutor
+
+def scan_network_for_ollama():
+    """Scan the local subnet for Ollama instances on port 11434."""
+    subnet = "192.168.1"
+    targets = [f"{subnet}.{i}" for i in range(1, 255)]
+    found_hosts = []
+
+    def check_host(ip):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(0.2)
+                if s.connect_ex((ip, 11434)) == 0:
+                    return f"http://{ip}:11434"
+        except:
+            pass
+        return None
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        results = executor.map(check_host, targets)
+        for res in results:
+            if res:
+                found_hosts.append(res)
+    
+    return found_hosts
